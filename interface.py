@@ -22,7 +22,7 @@ class GamidiInterface:
         self.background_image = self._load_background("assets/background.png")
 
         self.keyboard = Keyboard(self)
-        self.piano_roll = PianoRoll(self)   # new
+        self.piano_roll = PianoRoll(self)   
 
     def _load_asset(self, path, size):
         if os.path.exists(path):

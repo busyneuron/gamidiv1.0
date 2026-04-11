@@ -160,3 +160,26 @@ class TheoryEngine:
         new_idx = idx + direction * jump
         new_idx = max(0, min(new_idx, len(legal)-1))
         return legal[new_idx]
+    
+    # theory_engine.py (add this method)
+
+    def get_offset_between_notes(self, from_note, to_note):
+        """
+        Given two absolute MIDI notes, return the (degree_offset, octave_offset)
+        such that to_note = get_pitch_at_offset(from_note, degree_offset, octave_offset)
+        within the current scale.
+        """
+        legal = sorted(self.get_legal_notes())
+        if not legal:
+            return 0, 0
+        def closest_idx(note):
+            try:
+                return legal.index(note)
+            except ValueError:
+                return min(range(len(legal)), key=lambda i: abs(legal[i] - note))
+        from_idx = closest_idx(from_note)
+        to_idx = closest_idx(to_note)
+        diff = to_idx - from_idx
+        degree_offset = diff % len(legal)
+        octave_offset = diff // len(legal)
+        return degree_offset, octave_offset 

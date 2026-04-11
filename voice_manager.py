@@ -2,11 +2,12 @@
 from event_bus import bus
 
 class VoiceManager:
-    def __init__(self):
+    def __init__(self, theory_engine=None):
         self.voices = {}
         self.gate = False
         self.chord = False
         self.cursor_note = 60
+        self.theory = theory_engine
 
         bus.on("VOICE_NOTE_ON", self._on_voice_note_on)
         bus.on("VOICE_NOTE_OFF", self._on_voice_note_off)
@@ -70,3 +71,27 @@ class VoiceManager:
     def panic(self):
         for voice in self.voices.values():
             voice.panic()
+    
+    def jump_cursor_to_voice(self, voice_id):
+        voice = self.voices.get(voice_id)
+        if not voice:
+            return
+        # Get the voice's current sounding note
+        new_cursor = voice.last_played_note
+        if new_cursor is None:
+            new_cursor = voice.get_target_pitch(self.cursor_note)
+        if new_cursor is None:
+            return
+        # For each voice, recompute offsets based on its current absolute note
+        for v in self.voices.values():
+            current_note = v.last_played_note
+            if current_note is None:
+                current_note = v.get_target_pitch(self.cursor_note)
+            if current_note is None:
+                continue
+            deg_off, oct_off = self.theory.get_offset_between_notes(new_cursor, current_note)
+            v.degree_offset = deg_off
+            v.octave_offset = oct_off
+        # Update cursor
+        self.cursor_note = new_cursor
+        bus.emit("CURSOR_MOVED", new_note=self.cursor_note)

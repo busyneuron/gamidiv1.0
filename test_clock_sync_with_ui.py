@@ -40,13 +40,13 @@ def main():
     bus.on("SEND_NOTE_ON", midi.send_note_on)
     bus.on("SEND_NOTE_OFF", midi.send_note_off)
 
-    vm = VoiceManager()
+    vm = VoiceManager(theory) 
     
 
     # Voices
     voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
                   degree_offset=0, octave_offset=0, channel=0)
-    voice.set_motif([("quarter", "normal"),("quarter", "normal"), ("eighth", "normal"), ("eighth", "normal"),("eighth", "normal"),("eighth", "normal")])
+    voice.set_motif([("eighth", "normal"),("sixteenth", "normal"),("sixteenth", "normal")])
     vm.add_voice(voice)
 
     voice2 = Voice(voice_id=1, event_bus=bus, theory_engine=theory,

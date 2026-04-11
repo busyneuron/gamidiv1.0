@@ -18,3 +18,5 @@ class ActionManager:
             self.vm.set_gate(value)
         elif action_id == "chord":
             self.vm.set_chord(value)
+        elif action_id == "jump_to_voice2" and value:
+            self.vm.jump_cursor_to_voice(1)

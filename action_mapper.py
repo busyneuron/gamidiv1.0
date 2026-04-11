@@ -8,6 +8,7 @@ class ActionMapper:
             15: "move_cursor_down",
             5: "gate",
             7: "chord",
+            6: "jump_to_voice2",
         }
         bus.on("BUTTON_PRESSED", self._on_button_event)
         bus.on("BUTTON_RELEASED", self._on_button_event)
