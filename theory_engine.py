@@ -1,82 +1,162 @@
 # theory_engine.py
+from event_bus import bus
+
 class TheoryEngine:
     def __init__(self, root_note=60, mode="Major"):
         self.root_note = root_note
         self.mode = mode
-        self.cursor_degree = 0  # 0 = root of scale
-        self.cursor_octave = 4  # octave (C4 = 60)
-        # Major scale intervals (Ionian)
-        self.scale_intervals = [0, 2, 4, 5, 7, 9, 11]
-        # Map mode name to intervals (expand later)
-        self.modes = {
-            "Major": [0, 2, 4, 5, 7, 9, 11],
-            "Minor": [0, 2, 3, 5, 7, 8, 10],
+        self.accidental_offsets = {}          # degree_index -> semitone shift
+        self.filter_root = True
+        self.filter_pivot_note = 62
+        self.extensions = set()               # intervals 6,8,10,12
+        self.omissions = set()                # intervals 2,4
+
+        self.SCALES = {
+            "Major": [0,2,4,5,7,9,11],
+            "Minor": [0,2,3,5,7,8,10],
+            "Dorian": [0,2,3,5,7,9,10],
+            "Phrygian": [0,1,3,5,7,8,10],
+            "Lydian": [0,2,4,6,7,9,11],
+            "Mixolydian": [0,2,4,5,7,9,10],
+            "Locrian": [0,1,3,5,6,8,10],
         }
-        self.set_mode(mode)
+        self._update_effective_intervals()
 
+    def _update_effective_intervals(self):
+        base = self.SCALES[self.mode]
+        self.effective_intervals = []
+        for i, interval in enumerate(base):
+            shift = self.accidental_offsets.get(i, 0)
+            self.effective_intervals.append((interval + shift) % 12)
+
+    # --- Scale & root ---
     def set_mode(self, mode_name):
-        if mode_name in self.modes:
-            self.scale_intervals = self.modes[mode_name]
+        if mode_name in self.SCALES:
             self.mode = mode_name
+            self._update_effective_intervals()
+            bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                     root_note=self.root_note, mode=self.mode)
 
-    def move_cursor(self, degree_delta):
-        """Move cursor by scale degrees, but do nothing if new pitch out of MIDI range."""
-        # Store original state
-        orig_degree = self.cursor_degree
-        orig_octave = self.cursor_octave
+    def set_root(self, new_root):
+        self.root_note = new_root
+        bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                 root_note=self.root_note, mode=self.mode)
 
-        # Tentatively move degree
-        self.cursor_degree += degree_delta
-        # Wrap around scale, adjusting octave as needed
-        while self.cursor_degree >= len(self.scale_intervals):
-            self.cursor_degree -= len(self.scale_intervals)
-            self.cursor_octave += 1
-        while self.cursor_degree < 0:
-            self.cursor_degree += len(self.scale_intervals)
-            self.cursor_octave -= 1
+    # --- Accidentals ---
+    def modify_degree_by_note(self, note, delta):
+        """Sharpen (delta=1) or flatten (delta=-1) the scale degree of the given note."""
+        note_pc = (note - self.root_note) % 12
+        for i, interval in enumerate(self.effective_intervals):
+            if interval % 12 == note_pc:
+                self.accidental_offsets[i] = self.accidental_offsets.get(i, 0) + delta
+                self._update_effective_intervals()
+                bus.emit("ACCIDENTALS_CHANGED", accidentals=self.accidental_offsets)
+                bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                         root_note=self.root_note, mode=self.mode)
+                return True
+        return False
 
-        # Calculate new pitch
-        new_pitch = self.get_cursor_midi_pitch()
-        # If out of valid MIDI range, revert changes
-        if new_pitch < 0 or new_pitch > 127:
-            self.cursor_degree = orig_degree
-            self.cursor_octave = orig_octave
+    def reset_accidentals(self):
+        self.accidental_offsets.clear()
+        self._update_effective_intervals()
+        bus.emit("ACCIDENTALS_CHANGED", accidentals={})
+        bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                 root_note=self.root_note, mode=self.mode)
 
-    def get_cursor_midi_pitch(self):
-        """Return MIDI note number of current cursor position."""
-        # root_note is MIDI note of C in octave 4 (default 60 = C4)
-        # Convert cursor_octave to offset from octave 4
-        octave_offset = self.cursor_octave - 4
-        base = self.root_note + octave_offset * 12
-        return base + self.scale_intervals[self.cursor_degree]
+    # --- Filter mode ---
+    def set_filter_mode(self, active, pivot_note=None):
+        self.filter_root = active
+        if pivot_note is not None:
+            self.filter_pivot_note = pivot_note
+        bus.emit("FILTER_MODE_CHANGED", active=active, pivot=self.filter_pivot_note)
+        bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                 root_note=self.root_note, mode=self.mode)
 
-    def get_pitch_at_offset(self, degree_offset, octave_offset=0):
-        """Return MIDI note (may be outside 0-127) for a voice offset."""
-        degree = self.cursor_degree + degree_offset
-        octave = self.cursor_octave + octave_offset
-        # Allow octave to be any integer (negative or large)
-        base = self.root_note + (octave - 4) * 12
-        # Adjust degree to within scale length, but keep track of extra octave shifts
-        scale_len = len(self.scale_intervals)
-        extra_octave = 0
-        while degree >= scale_len:
-            degree -= scale_len
-            extra_octave += 1
-        while degree < 0:
-            degree += scale_len
-            extra_octave -= 1
-        octave += extra_octave
-        base = self.root_note + (octave - 4) * 12
-        return base + self.scale_intervals[degree]
+    def set_extensions(self, extensions):
+        self.extensions = set(extensions)
+        if self.filter_root:
+            bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                     root_note=self.root_note, mode=self.mode)
 
+    def set_omissions(self, omissions):
+        self.omissions = set(omissions)
+        if self.filter_root:
+            bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                     root_note=self.root_note, mode=self.mode)
+
+    # --- Legal notes ---
     def get_legal_notes(self):
-        """Return set of all MIDI notes in the current scale across all octaves."""
+        if self.filter_root and self.filter_pivot_note is not None:
+            return self._get_filter_legal_notes()
+        else:
+            return self._get_scale_legal_notes()
+
+    def _get_scale_legal_notes(self):
         legal = set()
-        # Octave range that covers MIDI 0..127 (octave -1 to 9)
         for octave in range(-1, 10):
             base = self.root_note + (octave - 4) * 12
-            for interval in self.scale_intervals:
+            for interval in self.effective_intervals:
                 note = base + interval
                 if 0 <= note <= 127:
                     legal.add(note)
         return legal
+
+    def _get_filter_legal_notes(self):
+        # Find degree index of pivot note
+        pivot_pc = (self.filter_pivot_note - self.root_note) % 12
+        pivot_degree = None
+        for i, interval in enumerate(self.effective_intervals):
+            if interval % 12 == pivot_pc:
+                pivot_degree = i
+                break
+        if pivot_degree is None:
+            return self._get_scale_legal_notes()
+
+        chord_degrees = [pivot_degree, pivot_degree+2, pivot_degree+4]
+        for ext in self.extensions:
+            chord_degrees.append(pivot_degree + ext)
+        # Remove omitted degrees (relative to pivot)
+        chord_degrees = [d for d in chord_degrees if (d - pivot_degree) not in self.omissions]
+
+        legal = set()
+        for octave in range(-1, 10):
+            for d in chord_degrees:
+                octave_shift, idx = divmod(d, 7)
+                interval = self.effective_intervals[idx] + 12 * octave_shift
+                note = self.root_note + interval + (octave - 4) * 12
+                if 0 <= note <= 127:
+                    legal.add(note)
+        return legal
+
+    # --- Helper for voices (cursor note is external) ---
+    def get_pitch_at_offset(self, cursor_note, degree_offset, octave_offset=0):
+        """Return MIDI note for a voice relative to cursor."""
+        legal = sorted(self.get_legal_notes())
+        if not legal:
+            return cursor_note
+        # Find cursor's index in legal notes
+        try:
+            idx = legal.index(cursor_note)
+        except ValueError:
+            idx = min(range(len(legal)), key=lambda i: abs(legal[i] - cursor_note))
+        target_idx = idx + degree_offset + octave_offset * len(legal)  # approximate
+        target_idx = max(0, min(target_idx, len(legal)-1))
+        return legal[target_idx]
+
+    # --- Cursor movement helper ---
+    def get_next_note(self, current_note, direction, jump=1, chromatic=False):
+        if chromatic:
+            new_note = current_note + direction
+            if 0 <= new_note <= 127:
+                return new_note
+            return current_note
+        legal = sorted(self.get_legal_notes())
+        if not legal:
+            return current_note
+        try:
+            idx = legal.index(current_note)
+        except ValueError:
+            idx = min(range(len(legal)), key=lambda i: abs(legal[i] - current_note))
+        new_idx = idx + direction * jump
+        new_idx = max(0, min(new_idx, len(legal)-1))
+        return legal[new_idx]
