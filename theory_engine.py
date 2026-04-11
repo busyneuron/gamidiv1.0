@@ -6,8 +6,8 @@ class TheoryEngine:
         self.root_note = root_note
         self.mode = mode
         self.accidental_offsets = {}          # degree_index -> semitone shift
-        self.filter_root = True
-        self.filter_pivot_note = 62
+        self.filter_root = False
+        self.filter_pivot_note = None
         self.extensions = set()               # intervals 6,8,10,12
         self.omissions = set()                # intervals 2,4
 

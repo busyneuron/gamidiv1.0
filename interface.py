@@ -1,8 +1,10 @@
+# interface.py (modified)
 import pygame
 import os
 from ui_utils import Grid, Theme
 from ui_components.keyboard import Keyboard
-from ui_components.keyboard_state import KeyboardState
+from ui_components.piano_roll import PianoRoll
+from ui_state import UIState
 
 class GamidiInterface:
     def __init__(self, screen):
@@ -11,18 +13,16 @@ class GamidiInterface:
         self.grid = Grid(self.win_w)
         self.theme = Theme().hue_shift(50)
         
-        # --- LAYER SURFACES ---
         self.layer_piano = pygame.Surface((736, 736), pygame.SRCALPHA)
         self.layer_plates = pygame.Surface((736, 736), pygame.SRCALPHA)
         self.layer_content = pygame.Surface((736, 736), pygame.SRCALPHA)
 
-        # --- ASSET LOADING ---
         self.grating_asset = self._load_asset("assets/grating.png", (736, 736))
         self.plates_asset = self._load_asset("assets/plates.png", (736, 736))
         self.background_image = self._load_background("assets/background.png")
 
-        # --- KEYBOARD COMPONENT ---
         self.keyboard = Keyboard(self)
+        self.piano_roll = PianoRoll(self)   # new
 
     def _load_asset(self, path, size):
         if os.path.exists(path):
@@ -36,31 +36,31 @@ class GamidiInterface:
             return pygame.transform.scale(img, (self.win_w, self.win_h))
         return None
 
-    def draw(self, state: KeyboardState):
+    def draw(self, state: UIState):
         # 1. Clear and draw background
         if self.background_image:
             self.screen.blit(self.background_image, (0, 0))
         else:
             self.screen.fill(self.theme.bg)
 
-        # Clear layers
         self.layer_piano.fill((0, 0, 0, 0))
         self.layer_plates.fill((0, 0, 0, 0))
         self.layer_content.fill((0, 0, 0, 0))
 
-        # 2. Piano roll layer (empty for now, but kept for future)
-        # self.piano_roll.draw(...) would go here
+        # 2. Draw piano roll (bottom layer)
+        rect_piano = self.grid.get_rect(0, 0, 16, 11)
+        self.piano_roll.draw(self.layer_piano, state.piano_roll, rect_piano)
 
         # 3. Draw keyboard onto content layer
         rect_kb = self.grid.get_rect(0, 11, 16, 2)
-        self.keyboard.draw(self.layer_content, state, rect_kb)
+        self.keyboard.draw(self.layer_content, state.keyboard, rect_kb)
 
-        # 4. Composite layers in correct order
-        self.screen.blit(self.layer_piano, (0, 0))   # piano roll (bottom)
+        # 4. Composite layers
+        self.screen.blit(self.layer_piano, (0, 0))
         if self.grating_asset:
-            self.screen.blit(self.grating_asset, (0, 0))  # grating overlay
+            self.screen.blit(self.grating_asset, (0, 0))
         if self.plates_asset:
-            self.screen.blit(self.plates_asset, (0, 0))   # plates overlay
-        self.screen.blit(self.layer_content, (0, 0))      # content (keyboard on top)
+            self.screen.blit(self.plates_asset, (0, 0))
+        self.screen.blit(self.layer_content, (0, 0))
 
         pygame.display.flip()

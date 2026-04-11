@@ -6,7 +6,7 @@ class VoiceManager:
         self.voices = {}
         self.gate = False
         self.chord = False
-        self.cursor_note = 60  # initial default
+        self.cursor_note = 60
 
         bus.on("VOICE_NOTE_ON", self._on_voice_note_on)
         bus.on("VOICE_NOTE_OFF", self._on_voice_note_off)
@@ -21,19 +21,25 @@ class VoiceManager:
             del self.voices[voice_id]
 
     def set_gate(self, state):
+        if self.gate and not state:
+            self.release_all_voices()
         self.gate = state
 
     def set_chord(self, state):
+        if self.chord and not state:
+            for voice in self.voices.values():
+                if voice.degree_offset != 0:
+                    voice.release_note()
         self.chord = state
+
+    def release_all_voices(self):
+        for voice in self.voices.values():
+            voice.release_note()
 
     def _on_cursor_moved(self, new_note):
         self.cursor_note = new_note
 
     def _on_clock_tick(self):
-        for voice in self.voices.values():
-            voice.on_clock_tick(self.cursor_note)
-
-    def broadcast_tick(self):
         for voice in self.voices.values():
             voice.on_clock_tick(self.cursor_note)
 
@@ -50,13 +56,16 @@ class VoiceManager:
             return
         if self._should_play_voice(voice):
             bus.emit("SEND_NOTE_ON", note=note, velocity=velocity, channel=channel)
+        else:
+            # Ensure voice releases any pending note
+            voice.release_note()
 
     def _on_voice_note_off(self, voice_id, note, channel):
         voice = self.voices.get(voice_id)
         if not voice:
             return
-        if self._should_play_voice(voice):
-            bus.emit("SEND_NOTE_OFF", note=note, channel=channel)
+        # Always send note-off
+        bus.emit("SEND_NOTE_OFF", note=note, channel=channel)
 
     def panic(self):
         for voice in self.voices.values():
