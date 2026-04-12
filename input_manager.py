@@ -47,3 +47,8 @@ class InputManager:
         for btn in released:
             bus.emit("BUTTON_RELEASED", button=btn, value=False)
         self._prev_buttons = current
+
+
+        for i in range(4):  # assuming 4 axes
+            val = self.get_axis(i)
+            bus.emit("RAW_AXIS_MOVED", axis=i, value=val)

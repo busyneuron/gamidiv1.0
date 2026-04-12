@@ -9,9 +9,13 @@ from voice import Voice
 from voice_manager import VoiceManager
 from theory_engine import TheoryEngine
 from input_manager import InputManager
+from axis_mapper import AxisMapper
 from action_mapper import ActionMapper
 from action_manager import ActionManager
 from cursor_controller import CursorController
+from focus_manager import FocusManager
+from radial_menu.rm_controller import RadialMenuController
+from radial_menu.rm_menus import root_menu
 from ui_components.keyboard_state import KeyboardState
 from ui_components.keyboard_controller import KeyboardController
 from ui_components.piano_roll_state import PianoRollState
@@ -24,15 +28,12 @@ def main():
     os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1'
 
     pygame.init()
-    # Use RESIZABLE to allow window management; background events still work
-    screen = pygame.display.set_mode((736, 736))
+    screen = pygame.display.set_mode((736, 736), pygame.RESIZABLE)
     pygame.display.set_caption("GAMIDI Test")
-    ui = GamidiInterface(screen)
 
     # ---- Backend Setup ----
     theory = TheoryEngine(root_note=60, mode="Major")
 
-    # MIDI ports
     input_name = "GAMIDI_SYNC"
     output_name = "Pypad"
     midi = MidiManager(input_name=input_name, output_name=output_name)
@@ -40,13 +41,13 @@ def main():
     bus.on("SEND_NOTE_ON", midi.send_note_on)
     bus.on("SEND_NOTE_OFF", midi.send_note_off)
 
-    vm = VoiceManager(theory) 
+    vm = VoiceManager(theory)
     
 
     # Voices
     voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
                   degree_offset=0, octave_offset=0, channel=0)
-    voice.set_motif([("eighth", "normal"),("sixteenth", "normal"),("sixteenth", "normal")])
+    voice.set_motif([("quarter", "normal")])
     vm.add_voice(voice)
 
     voice2 = Voice(voice_id=1, event_bus=bus, theory_engine=theory,
@@ -65,10 +66,29 @@ def main():
     cursor_ctrl = CursorController(theory, initial_note=60)
     vm.cursor_note = cursor_ctrl.cursor_note
 
+    # ---- Action Manager (supports toggle_gate) ----
+    class CustomActionManager(ActionManager):
+        def _on_action(self, action_id, value):
+            if action_id == "toggle_gate" and value:
+                self.vm.set_gate(not self.vm.gate)
+                print(f"Gate toggled: {self.vm.gate}")
+            else:
+                super()._on_action(action_id, value)
+
     # ---- Input & Action System ----
     input_mgr = InputManager()
+    axis_mapper = AxisMapper()
     action_mapper = ActionMapper()
-    action_mgr = ActionManager(cursor_ctrl, vm)
+    action_mgr = CustomActionManager(cursor_ctrl, vm)
+
+    # ---- Focus Manager ----
+    focus_mgr = FocusManager()
+
+    # ---- Radial Menu ----
+    radial_ctrl = RadialMenuController(root_menu)
+
+    # ---- UI ----
+    ui = GamidiInterface(screen, radial_ctrl)
 
     # ---- UI Controllers ----
     legal_notes = theory.get_legal_notes()
@@ -84,7 +104,6 @@ def main():
     piano_roll_state = PianoRollState()
     piano_roll_ctrl = PianoRollController(piano_roll_state)
 
-    # Combine into UIState
     ui_state = UIState(keyboard=keyboard_ctrl.get_state(), piano_roll=piano_roll_ctrl.get_state())
 
     # ---- Main Loop ----
@@ -93,16 +112,18 @@ def main():
 
     try:
         while running:
-            # Pump events to keep window responsive
             pygame.event.pump()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
 
-            input_mgr.update()
+            # Update input: read buttons and axes
+            input_mgr.update()  # emits BUTTON_PRESSED, BUTTON_RELEASED, RAW_AXIS_MOVED
+
+            # Process MIDI clock
             midi.process_incoming()
 
-            # Redraw UI with current state
+            # Update UI state (keyboard and piano roll are event-driven)
             ui.draw(ui_state)
 
             clock.tick(60)
