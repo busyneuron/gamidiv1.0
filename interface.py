@@ -6,6 +6,7 @@ from ui_components.keyboard import Keyboard
 from ui_components.piano_roll import PianoRoll
 from radial_menu.rm_view import RadialMenuView
 from ui_state import UIState
+from ui_components.scale_hud import ScaleHUD
 
 class GamidiInterface:
     def __init__(self, screen, radial_controller):
@@ -25,6 +26,7 @@ class GamidiInterface:
         self.keyboard = Keyboard(self)
         self.piano_roll = PianoRoll(self)
         self.radial_view = RadialMenuView(self, radial_controller)
+        self.scale_hud = ScaleHUD(self)
 
         self.font_status = pygame.font.SysFont("Arial", 11)
         self.font_label = pygame.font.SysFont("Arial", 10)
@@ -64,6 +66,9 @@ class GamidiInterface:
         # Radial menu (self-contained)
         rect_radial = self.grid.get_rect(8, 0, 8, 8)
         self.radial_view.draw(self.layer_content, rect_radial)
+
+        rect_scale_hud = self.grid.get_rect(1, 2, 10, 3)  # as before
+        self.scale_hud.draw(self.layer_content, state.scale_hud, rect_scale_hud)
 
         # Composite
         self.screen.blit(self.layer_piano, (0, 0))

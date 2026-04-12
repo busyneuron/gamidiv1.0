@@ -25,7 +25,7 @@ class RadialMenuView:
         self.dim_color = (80, 80, 80)
         self.dim_alpha = 180
 
-        self.circle_size_normal = 6
+        self.circle_size_normal = 8
         self.circle_size_hover = 10
         self.circle_size_dim = 4
         self.hover_outline_color = (255, 255, 255)
@@ -68,6 +68,12 @@ class RadialMenuView:
         self.trail = []
         self.ripples = []
 
+        self.gate_on_png = None
+        self.gate_on_mask = None
+        self.mask_scroll_x = 0
+        self.mask_scroll_speed = 0.2
+        self._load_gate_on_assets()
+
     # ----------------------------------------------------------------------
     # Asset loading
     # ----------------------------------------------------------------------
@@ -77,6 +83,15 @@ class RadialMenuView:
         except:
             self.gate_png = None
     
+    def _load_gate_on_assets(self):
+        try:
+            self.gate_on_png = pygame.image.load("assets/gate_on.png").convert_alpha()
+            self.gate_on_mask = pygame.image.load("assets/gate_on_mask.png").convert_alpha()
+        except Exception as e:
+            print(f"Failed to load gate_on assets: {e}")
+            self.gate_on_png = None
+            self.gate_on_mask = None
+
     def _load_pointer_images(self):
         try:
             raw = pygame.image.load("assets/pointer.png").convert_alpha()
@@ -201,6 +216,7 @@ class RadialMenuView:
             if highlight_gate == dir_key:
                 effective_dim = 1.0   # fully bright
 
+            # Floating animation only for non-dimmed gates
             if effective_dim >= 0.9:
                 t = now / 1000.0
                 phase = t * self.float_speed * 2 * math.pi + (i * 2 * math.pi / 8)
@@ -211,7 +227,9 @@ class RadialMenuView:
 
             center = (int(px), int(py))
             is_hovered = (hovered_dir == dir_key)
+            is_active = self.controller.is_gate_active(gate.action_id) if gate.action_id else False
 
+            # Determine target size and color
             if effective_dim < 1.0:
                 target_size = self.circle_size_dim
                 alpha = int(self.dim_alpha * effective_dim)
@@ -228,15 +246,41 @@ class RadialMenuView:
             anim_key = (level, dir_key)
             current_size = self._update_circle_animation(anim_key, target_size, now)
 
+            # Draw active indicator (bubble + scrolling mask) if gate is active and not dimmed
+            if is_active and effective_dim >= 0.9:
+                # Update mask scroll
+                if self.gate_on_mask:
+                    self.mask_scroll_x += self.mask_scroll_speed
+                    if self.mask_scroll_x >= self.gate_on_mask.get_width():
+                        self.mask_scroll_x -= self.gate_on_mask.get_width()
+
+                # Draw the gate_on bubble (scaled)
+                if self.gate_on_png:
+                    bubble_size = int(current_size * 2)
+                    bubble_surf = pygame.transform.smoothscale(self.gate_on_png, (bubble_size, bubble_size))
+                    bubble_rect = bubble_surf.get_rect(center=center)
+                    screen.blit(bubble_surf, bubble_rect)
+
+                # Draw the scrolling mask over the bubble
+                if self.gate_on_mask:
+                    mask_size = int(current_size * 2)
+                    mask_surf = pygame.transform.smoothscale(self.gate_on_mask, (mask_size, mask_size))
+                    src_x = int(self.mask_scroll_x) % mask_surf.get_width()
+                    src_rect = pygame.Rect(src_x, 0, mask_surf.get_width(), mask_surf.get_height())
+                    screen.blit(mask_surf, bubble_rect, src_rect, special_flags=pygame.BLEND_RGBA_MULT)
+
+            # Draw the regular gate circle (you can skip this if you want only the bubble)
             surf = self._get_gate_surface(color, int(current_size))
             if effective_dim < 1.0:
                 surf.set_alpha(alpha)
             rect = surf.get_rect(center=center)
             screen.blit(surf, rect)
 
+            # Hover outline
             if is_hovered and effective_dim >= 0.9:
                 pygame.draw.circle(screen, self.hover_outline_color, center, int(current_size) + 2, self.hover_outline_width)
 
+            # Label
             font = self.parent.font_status
             label_surf = font.render(gate.label, True, color)
             if effective_dim < 1.0:

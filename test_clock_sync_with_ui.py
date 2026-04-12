@@ -22,13 +22,15 @@ from ui_components.piano_roll_state import PianoRollState
 from ui_components.piano_roll_controller import PianoRollController
 from ui_state import UIState
 from interface import GamidiInterface
+from ui_components.scale_hud_controller import ScaleHUDController
+from ui_components.scale_hud_state import ScaleHUDState
 
 def main():
     # Allow joystick events when window not focused
     os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1'
 
     pygame.init()
-    screen = pygame.display.set_mode((736, 736), pygame.RESIZABLE)
+    screen = pygame.display.set_mode((736, 736))
     pygame.display.set_caption("GAMIDI Test")
 
     # ---- Backend Setup ----
@@ -43,6 +45,7 @@ def main():
 
     vm = VoiceManager(theory)
     
+    scale_hud_ctrl = ScaleHUDController(ScaleHUDState(root_note=60, mode="Major"))
 
     # Voices
     voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
@@ -66,20 +69,13 @@ def main():
     cursor_ctrl = CursorController(theory, initial_note=60)
     vm.cursor_note = cursor_ctrl.cursor_note
 
-    # ---- Action Manager (supports toggle_gate) ----
-    class CustomActionManager(ActionManager):
-        def _on_action(self, action_id, value):
-            if action_id == "toggle_gate" and value:
-                self.vm.set_gate(not self.vm.gate)
-                print(f"Gate toggled: {self.vm.gate}")
-            else:
-                super()._on_action(action_id, value)
-
+   
     # ---- Input & Action System ----
     input_mgr = InputManager()
     axis_mapper = AxisMapper()
     action_mapper = ActionMapper()
-    action_mgr = CustomActionManager(cursor_ctrl, vm)
+    # ---- Action Manager ----
+    action_mgr = ActionManager(cursor_ctrl, vm, theory)
 
     # ---- Focus Manager ----
     focus_mgr = FocusManager()
@@ -104,7 +100,11 @@ def main():
     piano_roll_state = PianoRollState()
     piano_roll_ctrl = PianoRollController(piano_roll_state)
 
-    ui_state = UIState(keyboard=keyboard_ctrl.get_state(), piano_roll=piano_roll_ctrl.get_state())
+    ui_state = UIState(
+        keyboard=keyboard_ctrl.get_state(),
+        piano_roll=piano_roll_ctrl.get_state(),
+        scale_hud=scale_hud_ctrl.get_state()
+    )
 
     # ---- Main Loop ----
     clock = pygame.time.Clock()
