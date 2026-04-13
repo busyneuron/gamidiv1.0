@@ -9,12 +9,11 @@ class ActionMapper:
             5: "gate",
             7: "chord",
             6: "jump_to_voice2",
-            8: "toggle_circle_ring",
+            4: "toggle_circle_ring",
         }
         bus.on("BUTTON_PRESSED", self._on_button_event)
         bus.on("BUTTON_RELEASED", self._on_button_event)
 
     def _on_button_event(self, button, value):
-        print(button)
         if button in self.button_map:
             bus.emit("INVOKE_ACTION", action_id=self.button_map[button], value=value)

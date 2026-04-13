@@ -9,6 +9,7 @@ from ui_state import UIState
 from ui_components.scale_hud import ScaleHUD
 from circle_of_fifths.circle_controller import CircleController
 from circle_of_fifths.circle_view import CircleView
+from ui_components.console import Console
 
 class GamidiInterface:
     def __init__(self, screen, radial_controller, theory_engine):
@@ -29,6 +30,7 @@ class GamidiInterface:
         self.piano_roll = PianoRoll(self)
         self.radial_view = RadialMenuView(self, radial_controller)
         self.scale_hud = ScaleHUD(self)
+        self.console = Console(self)
 
         # Circle of Fifths
         self.circle_controller = CircleController(theory_engine)
@@ -70,13 +72,16 @@ class GamidiInterface:
         rect_kb = self.grid.get_rect(0, 11, 16, 2)
         self.keyboard.draw(self.layer_content, state.keyboard, rect_kb)
 
-        # Radial menu
-        rect_radial = self.grid.get_rect(8, 0, 8, 8)
-        self.radial_view.draw(self.layer_content, rect_radial)
+        rect_console = self.grid.get_rect(0, 13, 4, 3)   # adjust if needed (old position)
+        self.console.draw(self.layer_content, rect_console)
 
         # Scale HUD
         rect_scale_hud = self.grid.get_rect(1, 2, 10, 3)
         self.scale_hud.draw(self.layer_content, state.scale_hud, rect_scale_hud)
+
+        # Radial menu
+        rect_radial = self.grid.get_rect(8, 0, 8, 8)
+        self.radial_view.draw(self.layer_content, rect_radial)
 
         # Circle of Fifths
         rect_circle = self.grid.get_rect(2, 5, 6, 5)   # position as in old layout

@@ -19,11 +19,11 @@ class CircleController:
         self._last_root_note = self.theory.root_note
         self._last_mode = self.theory.mode
 
-        # Subscribe to events
-        bus.on("RAW_AXIS_MOVED", self._on_axis_moved)
+        
+        bus.on("RIGHT_STICK_UPDATED", self._on_stick_updated)
         bus.on("FOCUS_CHANGED", self._on_focus_changed)
         bus.on("NOTE_ON_SENT", self._on_note_on)
-        # Optionally listen to scale changes to reset hover? Not necessary but safe
+        
         bus.on("SCALE_CHANGED", self._on_scale_changed)
         bus.on("TOGGLE_CIRCLE_RING", self._on_toggle_ring)
 
@@ -35,22 +35,9 @@ class CircleController:
         """Activate only when focus mode is 'circle'."""
         self.active = (mode == "circle")
 
-    def _on_axis_moved(self, axis: int, value: float):
+    def _on_stick_updated(self, x: float, y: float):
         if not self.active:
             return
-        # We expect right stick axes: axis 2 = X, axis 3 = Y (common on many controllers)
-        # But we need both X and Y values. The event gives one axis at a time.
-        # We'll store the latest values and process when both have been updated?
-        # Simpler: in update loop we could poll, but this is event-driven.
-        # Alternative: store axes values and only process when we have both.
-        # For simplicity, we will store axes in a dict and process on every axis move.
-        if not hasattr(self, '_axes'):
-            self._axes = {2: 0.0, 3: 0.0}
-        self._axes[axis] = value
-        # Process stick only when we have both axes (or just use latest)
-        # We'll call _update_stick with current X (axis2) and Y (axis3)
-        x = self._axes.get(2, 0.0)
-        y = self._axes.get(3, 0.0)
         self._update_stick(-x, -y)
 
     def _update_stick(self, x: float, y: float):
@@ -112,7 +99,7 @@ class CircleController:
 
         # Optional: emit a log event for UI
         bus.emit("ADD_LOG", text=f"Circle: {note_name} ({mode}) selected", color=(255,200,100))
-
+        
         # Reset hover and timer
         self.state.hovered_index = None
         self.state.exit_timer = 0

@@ -10,20 +10,17 @@ class InputManager:
         self.joy = pygame.joystick.Joystick(0)
         self.joy.init()
         self.num_buttons = self.joy.get_numbuttons()
-        self.DEADZONE = 0.01
+        self.DEADZONE = 0.1   # increased for stability
 
-    def _apply_deadzone(self, val, threshold=None):
-        if threshold is None:
-            threshold = self.DEADZONE
-        return 0.0 if abs(val) < threshold else val
+    def _apply_deadzone(self, val):
+        return 0.0 if abs(val) < self.DEADZONE else val
 
     def get_raw_buttons(self):
-        """Return set of currently pressed button indices."""
         pressed = set()
         for i in range(self.num_buttons):
             if self.joy.get_button(i):
                 pressed.add(i)
-        # Convert hat to buttons 12-15
+        # hat to buttons (optional, keep if needed)
         hat = self.joy.get_hat(0)
         if hat[0] == -1: pressed.add(12)
         elif hat[0] == 1: pressed.add(13)
@@ -34,9 +31,16 @@ class InputManager:
     def get_axis(self, axis):
         return self._apply_deadzone(self.joy.get_axis(axis))
 
-    # input_manager.py (update the update method)
+    def get_left_stick(self):
+        """Return (x, y) for left stick, with deadzone applied."""
+        return (self.get_axis(0), self.get_axis(1))
+
+    def get_right_stick(self):
+        """Return (x, y) for right stick, with deadzone applied."""
+        return (self.get_axis(2), self.get_axis(3))
+
     def update(self):
-        """Poll and emit events for button presses/releases."""
+        """Call once per frame. Emits button events and stick events."""
         current = self.get_raw_buttons()
         if not hasattr(self, '_prev_buttons'):
             self._prev_buttons = set()
@@ -48,7 +52,8 @@ class InputManager:
             bus.emit("BUTTON_RELEASED", button=btn, value=False)
         self._prev_buttons = current
 
-
-        for i in range(4):  # assuming 4 axes
-            val = self.get_axis(i)
-            bus.emit("RAW_AXIS_MOVED", axis=i, value=val)
+        # Emit combined stick events
+        lx, ly = self.get_left_stick()
+        rx, ry = self.get_right_stick()
+        bus.emit("LEFT_STICK_UPDATED", x=lx, y=ly)
+        bus.emit("RIGHT_STICK_UPDATED", x=rx, y=ry)

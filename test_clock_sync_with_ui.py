@@ -28,7 +28,7 @@ from ui_components.scale_hud_state import ScaleHUDState
 def main():
     # Allow joystick events when window not focused
     os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1'
-
+    
     pygame.init()
     screen = pygame.display.set_mode((736, 736))
     pygame.display.set_caption("GAMIDI Test")
@@ -50,19 +50,17 @@ def main():
     # Voices
     voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
                   degree_offset=0, octave_offset=0, channel=0)
-    voice.set_motif([("quarter", "normal")])
+    voice.set_motif([("quarter", "normal"), ("quarter rest", "normal")])
     vm.add_voice(voice)
 
     voice2 = Voice(voice_id=1, event_bus=bus, theory_engine=theory,
                    degree_offset=2, octave_offset=0, channel=0)
-    voice2.set_motif([("quarter rest", "normal"), ("sixteenth", "normal"),
-                      ("sixteenth", "normal"), ("eighth rest", "normal"),
-                      ("eighth", "normal")])
+    voice2.set_motif([("quarter rest", "normal"),("eighth", "normal"), ("eighth", "normal")])
     vm.add_voice(voice2)
 
     voice3 = Voice(voice_id=2, event_bus=bus, theory_engine=theory,
                    degree_offset=4, octave_offset=0, channel=0)
-    voice3.set_motif([("eighth rest", ""), ("eighth", "normal")])
+    voice3.set_motif([("quarter rest", "normal"),("eighth", "normal"), ("eighth", "normal")])
     vm.add_voice(voice3)
 
     # ---- Cursor Controller ----
@@ -110,6 +108,8 @@ def main():
     clock = pygame.time.Clock()
     running = True
 
+    bus.emit("ADD_LOG", text="Developed by busyneuron", color=(255,255,255))
+    bus.emit("ADD_LOG", text="Welcome to GAMIDI v1.1", color=(255,255,255))
     try:
         while running:
             pygame.event.pump()

@@ -7,12 +7,12 @@ class RadialMenuController:
     # radial_menu/rm_controller.py
     def __init__(self, root_menu: Menu):
         self.state = RadialState(stack=[root_menu])
-        self.state.entry_grace_frames = 15   # 0.5 seconds at 60 fps
-        self.state.exit_grace_frames = 65
+        self.state.entry_grace_frames = 10   
+        self.state.exit_grace_frames = 200
         self.state.deadzone_grace_frames = 30
         self.axes = {"radial_menu_x": 0.0, "radial_menu_y": 0.0}
         self._active = True
-        bus.on("AXIS_MOVED", self._on_axis_moved)
+        bus.on("RIGHT_STICK_UPDATED", self._on_stick_updated)
         bus.on("FOCUS_CHANGED", self._on_focus_changed)
         self.active_gates = {}  # action_id -> bool
         bus.on("ACTION_STATE_CHANGED", self._on_action_state_changed)
@@ -40,12 +40,12 @@ class RadialMenuController:
     def get_state(self) -> RadialState:
         return self.state
 
-    def _on_axis_moved(self, axis: str, value: float):
+    def _on_stick_updated(self, x: float, y: float):
         if not self._active:
             return
-        if axis in self.axes:
-            self.axes[axis] = value
-            self._update()
+        
+        self.axes = {"radial_menu_x": x, "radial_menu_y": y}
+        self._update()
 
     def _update(self):
         """Update state based on current axes."""

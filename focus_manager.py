@@ -5,12 +5,11 @@ from event_bus import bus
 class FocusMode(Enum):
     RADIAL = "radial"
     CIRCLE = "circle"
-    FADER = "fader"
-    NONE = "none"
+    
 
 class FocusManager:
     def __init__(self):
-        self.modes = [FocusMode.RADIAL, FocusMode.CIRCLE, FocusMode.FADER, FocusMode.NONE]
+        self.modes = [FocusMode.RADIAL, FocusMode.CIRCLE]
         self.current_index = 0  # RADIAL
         self.current_mode = self.modes[self.current_index]
 

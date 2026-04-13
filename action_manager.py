@@ -8,6 +8,7 @@ class ActionManager:
         self.theory = theory_engine
         self.momentary_actions = {"gate", "chord"}  # add others as needed
         bus.on("INVOKE_ACTION", self._on_action)
+        
 
     def _on_action(self, action_id, value):
         # Cursor movement
@@ -38,6 +39,7 @@ class ActionManager:
         elif action_id in self.momentary_actions:
             if action_id == "gate":
                 self.vm.set_gate(value)
+                
             elif action_id == "chord":
                 self.vm.set_chord(value)
 
