@@ -84,7 +84,7 @@ def main():
     radial_ctrl = RadialMenuController(root_menu)
 
     # ---- UI ----
-    ui = GamidiInterface(screen, radial_ctrl)
+    ui = GamidiInterface(screen, radial_ctrl, theory)
 
     # ---- UI Controllers ----
     legal_notes = theory.get_legal_notes()

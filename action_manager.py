@@ -23,6 +23,10 @@ class ActionManager:
         elif action_id == "toggle_chord" and value:
             self.vm.set_chord(not self.vm.chord)
             print(f"Chord toggled: {self.vm.chord}")
+        
+        
+        elif action_id == "toggle_circle_ring" and value:
+            bus.emit("TOGGLE_CIRCLE_RING")
 
         # Mode setting
         elif action_id.startswith("set_mode_") and value:
