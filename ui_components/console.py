@@ -5,7 +5,7 @@ from event_bus import bus
 class Console:
     def __init__(self, parent):
         self.parent = parent
-        self.font = parent.theme.fonts.get_mono_reg(12)
+        self.font = parent.theme.fonts.get_music_notation(12)
         self.bg_color = (0, 0, 0, 0)
         self.border_radius = 8
         self.padding_x = 15
@@ -30,6 +30,7 @@ class Console:
         # But keep a reasonable cap to avoid unbounded growth.
         if len(self.log_messages) > self.max_lines * 3:
             self.log_messages.pop()
+        
 
     def _wrap_text(self, text, max_width, font):
         """Wrap text to fit max_width (in pixels). Returns list of lines."""

@@ -142,3 +142,6 @@ class FontManager:
     
     def get_music_notation(self, size):
         return self.get_font("NotoMusic-Regular.tff", size)
+    
+    def get_symbol_font(self, size):
+        return self.get_font("segoe-ui-symbol.tff", size)

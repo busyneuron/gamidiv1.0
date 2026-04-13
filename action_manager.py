@@ -20,20 +20,24 @@ class ActionManager:
         # Toggle actions
         elif action_id == "toggle_gate" and value:
             self.vm.set_gate(not self.vm.gate)
-            print(f"Gate toggled: {self.vm.gate}")
+            
         elif action_id == "toggle_chord" and value:
             self.vm.set_chord(not self.vm.chord)
-            print(f"Chord toggled: {self.vm.chord}")
+            
         
-        
+        elif action_id == "toggle_degree_mode" and value:
+            bus.emit("TOGGLE_DEGREE_MODE")
+            bus.emit("ADD_LOG", text="Circle degree mode toggled", color=(255,255,255))
+
         elif action_id == "toggle_circle_ring" and value:
             bus.emit("TOGGLE_CIRCLE_RING")
+
 
         # Mode setting
         elif action_id.startswith("set_mode_") and value:
             mode_name = action_id.replace("set_mode_", "").capitalize()
             self.theory.set_mode(mode_name)
-            print(f"Mode changed to: {mode_name}")
+            
 
         # Momentary actions (held)
         elif action_id in self.momentary_actions:

@@ -279,7 +279,36 @@ class CircleView:
                 color, target_radius, text_color = self._get_minor_gate_style(
                     is_focused, is_tonic, has_triad, is_diatonic)
 
-            # Hover override
+            # Degree mode: override name and style for diatonic gates that match chord quality
+            if state.degree_mode and is_diatonic:
+                # Determine if this gate should show a numeral based on ring and chord quality
+                should_show_numeral = False
+                if is_major:
+                    # Outer ring: only show numerals for major chords (I, IV, V)
+                    if has_triad:  # has_triad here means major triad
+                        should_show_numeral = True
+                else:
+                    # Inner ring: only show numerals for minor chords (i, iv, v)
+                    if has_triad:  # has_triad here means minor triad
+                        should_show_numeral = True
+                
+                if should_show_numeral:
+                    # Replace note name with roman numeral
+                    name = self.controller._get_roman_numeral(i, is_major)
+                    
+                    # Override style for selected degree
+                    if state.selected_degree_index == i:
+                        if is_major:
+                            color = self.major_focused_tonic
+                            target_radius = self.radius_tonic
+                            text_color = self.major_focused_text
+                        else:
+                            color = self.minor_focused_tonic
+                            target_radius = self.radius_tonic
+                            text_color = self.minor_focused_text
+                # else: keep original note name and "other" style (already set)
+
+            # Hover override (this takes precedence over selected degree)
             if is_focused and state.hovered_index == i and state.active_ring == ring_key:
                 if is_major:
                     color = self.major_focused_hover_color

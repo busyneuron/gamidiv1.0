@@ -16,6 +16,8 @@ class CircleState:
     exit_timer: int = 0                   # frames since last stick movement
     pulse: Optional[PulseInfo] = None     # current pulse effect data
 
+    degree_mode: bool = False                # True = degree mode active
+    selected_degree_index: Optional[int] = None
     # Animation state for radius changes (managed by view, but can be stored here if needed)
     # We'll keep animation state inside the view to avoid polluting the state model.
     # The view will have its own dictionaries for current/target radii and timers.
