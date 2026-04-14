@@ -10,7 +10,7 @@ class ActionMapper:
             7: "chord",
             6: "jump_to_voice2",
             4: "toggle_circle_ring",
-            8: "toggle_degree_mode",
+            8: "toggle_circle_mode",
         }
         bus.on("BUTTON_PRESSED", self._on_button_event)
         bus.on("BUTTON_RELEASED", self._on_button_event)

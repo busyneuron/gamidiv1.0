@@ -25,9 +25,8 @@ class ActionManager:
             self.vm.set_chord(not self.vm.chord)
             
         
-        elif action_id == "toggle_degree_mode" and value:
-            bus.emit("TOGGLE_DEGREE_MODE")
-            bus.emit("ADD_LOG", text="Circle degree mode toggled", color=(255,255,255))
+        elif action_id == "toggle_circle_mode" and value:
+            bus.emit("TOGGLE_CIRCLE_MODE")
 
         elif action_id == "toggle_circle_ring" and value:
             bus.emit("TOGGLE_CIRCLE_RING")

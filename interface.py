@@ -7,9 +7,10 @@ from ui_components.piano_roll import PianoRoll
 from radial_menu.rm_view import RadialMenuView
 from ui_state import UIState
 from ui_components.scale_hud import ScaleHUD
-from circle_of_fifths.circle_controller import CircleController
-from circle_of_fifths.circle_view import CircleView
 from ui_components.console import Console
+from circle_of_fifths.chromatic_circle import ChromaticCircle
+from circle_of_fifths.degree_circle import DegreeCircle
+from event_bus import bus
 
 class GamidiInterface:
     def __init__(self, screen, radial_controller, theory_engine):
@@ -32,14 +33,30 @@ class GamidiInterface:
         self.scale_hud = ScaleHUD(self)
         self.console = Console(self)
 
-        # Circle of Fifths
-        self.circle_controller = CircleController(theory_engine)
-        self.circle_view = CircleView(self, self.circle_controller)
-        self.circle_view.apply_theme(self.theme)
+        # Circle widgets
+        self.chromatic_circle = ChromaticCircle(self, theory_engine)
+        self.degree_circle = DegreeCircle(self, theory_engine)
+        self.active_circle = self.chromatic_circle   # start with chromatic
+
+        # Apply theme to both
+        self.chromatic_circle.apply_theme(self.theme)
+        self.degree_circle.apply_theme(self.theme)
+
+        # Subscribe to circle mode toggle event
+        bus.on("TOGGLE_CIRCLE_MODE", self._on_toggle_circle_mode)
 
         self.font_status = pygame.font.SysFont("Arial", 11)
         self.font_label = pygame.font.SysFont("Arial", 10)
         self.font_lcd = pygame.font.SysFont("Consolas", 14)
+
+    def _on_toggle_circle_mode(self):
+        """Switch between chromatic and degree circles."""
+        if self.active_circle is self.chromatic_circle:
+            self.active_circle = self.degree_circle
+            bus.emit("ADD_LOG", text="Circle mode: DEGREE", color=(200,200,100))
+        else:
+            self.active_circle = self.chromatic_circle
+            bus.emit("ADD_LOG", text="Circle mode: CHROMATIC", color=(200,200,100))
 
     def _load_asset(self, path, size):
         if os.path.exists(path):
@@ -72,7 +89,8 @@ class GamidiInterface:
         rect_kb = self.grid.get_rect(0, 11, 16, 2)
         self.keyboard.draw(self.layer_content, state.keyboard, rect_kb)
 
-        rect_console = self.grid.get_rect(0, 13, 4, 3)   # adjust if needed (old position)
+        # Console
+        rect_console = self.grid.get_rect(0, 13, 4, 3)
         self.console.draw(self.layer_content, rect_console)
 
         # Scale HUD
@@ -83,9 +101,9 @@ class GamidiInterface:
         rect_radial = self.grid.get_rect(8, 0, 8, 8)
         self.radial_view.draw(self.layer_content, rect_radial)
 
-        # Circle of Fifths
-        rect_circle = self.grid.get_rect(2, 5, 6, 5)   # position as in old layout
-        self.circle_view.draw(self.layer_content, rect_circle)
+        # Circle of Fifths (active widget)
+        rect_circle = self.grid.get_rect(2, 5, 6, 5)
+        self.active_circle.draw(self.layer_content, rect_circle)
 
         # Composite
         self.screen.blit(self.layer_piano, (0, 0))

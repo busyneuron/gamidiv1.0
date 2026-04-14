@@ -114,7 +114,7 @@ def main():
     running = True
 
     bus.emit("ADD_LOG", text="Developed by busyneuron", color=(255,255,255))
-    bus.emit("ADD_LOG", text="Welcome to GAMIDI v1.1", color=(255,255,255))
+    bus.emit("ADD_LOG", text="Welcome to GAMIDI v1.1 𝄞", color=(255,255,255))
     
     try:
         while running:

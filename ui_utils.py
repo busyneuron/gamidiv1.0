@@ -141,7 +141,7 @@ class FontManager:
         return self.get_font("SpaceMono-Italic.ttf", size)
     
     def get_music_notation(self, size):
-        return self.get_font("NotoMusic-Regular.tff", size)
+        return self.get_font("NotoMusic-Regular.ttf", size)
     
     def get_symbol_font(self, size):
-        return self.get_font("segoe-ui-symbol.tff", size)
+        return self.get_font("segoe-ui-symbol.ttf", size)

@@ -21,6 +21,7 @@ class TheoryEngine:
             "Locrian": [0,1,3,5,6,8,10],
         }
         self._update_effective_intervals()
+        self._emit_chord_qualities()   # initial emission
 
     def _update_effective_intervals(self):
         base = self.SCALES[self.mode]
@@ -29,27 +30,100 @@ class TheoryEngine:
             shift = self.accidental_offsets.get(i, 0)
             self.effective_intervals.append((interval + shift) % 12)
 
+    def _emit_chord_qualities(self):
+        """Compute chord qualities and emit event."""
+        qualities = self.get_chord_qualities()
+        bus.emit("CHORD_QUALITIES_CHANGED", qualities=qualities)
+
+    def get_chord_qualities(self):
+        """
+        Return a dict mapping pitch_class (0-11) to:
+        {
+            'diatonic': bool,
+            'degree': int (0-6) or None,
+            'quality': 'tonic' | 'major' | 'minor' | 'diminished' | None,
+            'roman': str or None
+        }
+        """
+        root_pc = self.root_note % 12
+        intervals = self.effective_intervals  # 7 ints
+
+        # Precompute triad quality for each degree
+        triad_quality = []
+        for d in range(7):
+            root_int = intervals[d]
+            third_int = intervals[(d + 2) % 7]
+            fifth_int = intervals[(d + 4) % 7]
+            third_dist = (third_int - root_int) % 12
+            fifth_dist = (fifth_int - root_int) % 12
+            if third_dist == 4 and fifth_dist == 7:
+                quality = "major"
+            elif third_dist == 3 and fifth_dist == 7:
+                quality = "minor"
+            elif third_dist == 3 and fifth_dist == 6:
+                quality = "diminished"
+            else:
+                quality = None  # should not happen for diatonic
+            triad_quality.append(quality)
+
+        # Roman numeral map
+        roman_map = ["I", "II", "III", "IV", "V", "VI", "VII"]
+
+        result = {}
+        # Initialize all 12 pitch classes as non-diatonic
+        for pc in range(12):
+            result[pc] = {
+                'diatonic': False,
+                'degree': None,
+                'quality': None,
+                'roman': None
+            }
+
+        # Fill diatonic notes
+        for d, interval in enumerate(intervals):
+            pc = (root_pc + interval) % 12
+            quality = triad_quality[d]
+            # Override quality for tonic (degree 0)
+            if d == 0:
+                quality = "tonic"
+            roman = roman_map[d]
+            if quality == "minor":
+                roman = roman.lower()
+            elif quality == "diminished":
+                roman = roman.lower() + "°"
+            # For major and tonic, keep uppercase
+            result[pc] = {
+                'diatonic': True,
+                'degree': d,
+                'quality': quality,
+                'roman': roman
+            }
+        return result
+
     # --- Scale & root ---
     def set_mode(self, mode_name):
         if mode_name in self.SCALES:
             self.mode = mode_name
             self._update_effective_intervals()
+            self._emit_chord_qualities()
             bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
                      root_note=self.root_note, mode=self.mode)
 
     def set_root(self, new_root):
         self.root_note = new_root
+        self._update_effective_intervals()
+        self._emit_chord_qualities()
         bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
                  root_note=self.root_note, mode=self.mode)
 
     # --- Accidentals ---
     def modify_degree_by_note(self, note, delta):
-        """Sharpen (delta=1) or flatten (delta=-1) the scale degree of the given note."""
         note_pc = (note - self.root_note) % 12
         for i, interval in enumerate(self.effective_intervals):
             if interval % 12 == note_pc:
                 self.accidental_offsets[i] = self.accidental_offsets.get(i, 0) + delta
                 self._update_effective_intervals()
+                self._emit_chord_qualities()
                 bus.emit("ACCIDENTALS_CHANGED", accidentals=self.accidental_offsets)
                 bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
                          root_note=self.root_note, mode=self.mode)
@@ -59,6 +133,7 @@ class TheoryEngine:
     def reset_accidentals(self):
         self.accidental_offsets.clear()
         self._update_effective_intervals()
+        self._emit_chord_qualities()
         bus.emit("ACCIDENTALS_CHANGED", accidentals={})
         bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
                  root_note=self.root_note, mode=self.mode)
@@ -68,6 +143,8 @@ class TheoryEngine:
         self.filter_root = active
         if pivot_note is not None:
             self.filter_pivot_note = pivot_note
+        self._update_effective_intervals()
+        self._emit_chord_qualities()
         bus.emit("FILTER_MODE_CHANGED", active=active, pivot=self.filter_pivot_note)
         bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
                  root_note=self.root_note, mode=self.mode)
@@ -75,16 +152,20 @@ class TheoryEngine:
     def set_extensions(self, extensions):
         self.extensions = set(extensions)
         if self.filter_root:
+            self._update_effective_intervals()
+            self._emit_chord_qualities()
             bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
                      root_note=self.root_note, mode=self.mode)
 
     def set_omissions(self, omissions):
         self.omissions = set(omissions)
         if self.filter_root:
+            self._update_effective_intervals()
+            self._emit_chord_qualities()
             bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
                      root_note=self.root_note, mode=self.mode)
 
-    # --- Legal notes ---
+    # --- Legal notes (unchanged from your version) ---
     def get_legal_notes(self):
         if self.filter_root and self.filter_pivot_note is not None:
             return self._get_filter_legal_notes()
@@ -130,16 +211,14 @@ class TheoryEngine:
 
     # --- Helper for voices (cursor note is external) ---
     def get_pitch_at_offset(self, cursor_note, degree_offset, octave_offset=0):
-        """Return MIDI note for a voice relative to cursor."""
         legal = sorted(self.get_legal_notes())
         if not legal:
             return cursor_note
-        # Find cursor's index in legal notes
         try:
             idx = legal.index(cursor_note)
         except ValueError:
             idx = min(range(len(legal)), key=lambda i: abs(legal[i] - cursor_note))
-        target_idx = idx + degree_offset + octave_offset * len(legal)  # approximate
+        target_idx = idx + degree_offset + octave_offset * len(legal)
         target_idx = max(0, min(target_idx, len(legal)-1))
         return legal[target_idx]
 
@@ -160,15 +239,8 @@ class TheoryEngine:
         new_idx = idx + direction * jump
         new_idx = max(0, min(new_idx, len(legal)-1))
         return legal[new_idx]
-    
-    # theory_engine.py (add this method)
 
     def get_offset_between_notes(self, from_note, to_note):
-        """
-        Given two absolute MIDI notes, return the (degree_offset, octave_offset)
-        such that to_note = get_pitch_at_offset(from_note, degree_offset, octave_offset)
-        within the current scale.
-        """
         legal = sorted(self.get_legal_notes())
         if not legal:
             return 0, 0
@@ -182,4 +254,4 @@ class TheoryEngine:
         diff = to_idx - from_idx
         degree_offset = diff % len(legal)
         octave_offset = diff // len(legal)
-        return degree_offset, octave_offset 
+        return degree_offset, octave_offset

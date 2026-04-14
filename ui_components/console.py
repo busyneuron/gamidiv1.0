@@ -5,7 +5,7 @@ from event_bus import bus
 class Console:
     def __init__(self, parent):
         self.parent = parent
-        self.font = parent.theme.fonts.get_music_notation(12)
+        self.font = parent.theme.fonts.get_symbol_font(12)
         self.bg_color = (0, 0, 0, 0)
         self.border_radius = 8
         self.padding_x = 15
