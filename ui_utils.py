@@ -77,18 +77,30 @@ class Theme:
     
     def adjust_brightness(self, color_name, factor):
         """
-        Adjust brightness of a named theme color.
+        Adjust brightness of a named theme color while perfectly preserving hue.
         factor > 1 brightens, factor < 1 darkens.
         Returns new RGB tuple (preserves alpha if present).
         """
+        # Fetch the original color tuple using the string name
         original = getattr(self, color_name)
-        r, g, b = original[:3]
-        r = min(255, max(0, int(r * factor)))
-        g = min(255, max(0, int(g * factor)))
-        b = min(255, max(0, int(b * factor)))
+        
+        # Separate the RGB channels from the Alpha channel (if it exists)
+        rgb = original[:3]
+        
+        # Convert to HSL using your existing static method
+        h, s, l = self._rgb_to_hsl(rgb)
+        
+        # Adjust the lightness and clamp it between 0.0 and 1.0
+        new_l = max(0.0, min(1.0, l * factor))
+        
+        # Convert back to RGB
+        new_rgb = self._hsl_to_rgb((h, s, new_l))
+        
+        # Re-attach the alpha channel if the original color had one
         if len(original) == 4:
-            return (r, g, b, original[3])
-        return (r, g, b)
+            return (*new_rgb, original[3])
+            
+        return new_rgb
 
 class FontManager:
     def __init__(self, fonts_folder="fonts"):

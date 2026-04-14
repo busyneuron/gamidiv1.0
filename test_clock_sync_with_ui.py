@@ -50,17 +50,23 @@ def main():
     # Voices
     voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
                   degree_offset=0, octave_offset=0, channel=0)
-    voice.set_motif([("quarter", "normal")])
+    voice.set_motif([("half", "normal")])
     vm.add_voice(voice)
 
     voice2 = Voice(voice_id=1, event_bus=bus, theory_engine=theory,
-                   degree_offset=4, octave_offset=0, channel=0)
-    voice2.set_motif([("quarter", "normal")])
+                   degree_offset=1, octave_offset=0, channel=0)
+    voice2.set_motif([("half", "normal")])
     vm.add_voice(voice2)
 
-    
+    voice3 = Voice(voice_id=2, event_bus=bus, theory_engine=theory,
+                   degree_offset=2, octave_offset=0, channel=0)
+    voice3.set_motif([("half", "normal")])
+    vm.add_voice(voice3)
 
-    
+    voice4 = Voice(voice_id=3, event_bus=bus, theory_engine=theory,
+                   degree_offset=3, octave_offset=0, channel=0)
+    voice4.set_motif([("half", "normal")])
+    vm.add_voice(voice4)
 
     # ---- Cursor Controller ----
     cursor_ctrl = CursorController(theory, initial_note=60)

@@ -12,7 +12,7 @@ class DegreeCircle(BaseCircle):
     def apply_theme(self, theme):
         super().apply_theme(theme)
         self.major_selected_color = theme.adjust_brightness("color2", 1.6)
-        self.minor_selected_color = theme.adjust_brightness("color3", 1.6)
+        self.minor_selected_color = theme.adjust_brightness("color3", 0.4)
 
     def get_gate_label(self, gate_index: int, is_major_ring: bool, chord_info: dict) -> str:
         is_diatonic = chord_info.get('diatonic', False)

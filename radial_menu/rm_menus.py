@@ -16,11 +16,38 @@ modes_menu = Menu(
     }
 )
 
+extensions_menu = Menu(
+    name="extensions",
+    gates={
+        "N":  Gate(label="7th", color=(255,100,100), action_id="toggle_extension_6"),
+        "NE": Gate(label="9th/2nd", color=(255,100,100), action_id="toggle_extension_8"),
+        "E":  Gate(label="11th/4th", color=(255,100,100), action_id="toggle_extension_10"),
+        "SE": Gate(label="13th/6th", color=(255,100,100), action_id="toggle_extension_12"),
+        "SW": Gate(label="no3", color=(255,100,100), action_id="toggle_omit_third"),
+        "W":  Gate(label="no5", color=(255,100,100), action_id="toggle_omit_fifth"),
+    }
+)
+
+scale_menu = Menu(
+    name="scale",
+    gates={
+        "N":  Gate(label="SHARP", color=(255,180,50), action_id="sharpen_note"),
+        "NE": Gate(label="FLAT",  color=(50,200,255), action_id="flatten_note"),
+        "E":  Gate(label="CLEAR", color=(200,200,100), action_id="clear_accidentals"),
+        
+    }
+)
+
 # Root menu
 root_menu = Menu(
     name="root",
     gates={
         "W": Gate(label="GATE", color=(0, 255, 100), action_id="toggle_gate", gate_type=GateType.TOGGLE),
         "E": Gate(label="MODES", color=(0, 180, 255), sub_menu=modes_menu),
+        "S": Gate(label="EXT", color=(255,100,100), sub_menu=extensions_menu),
+        "N": Gate(label="SCALE", color=(255,180,50), sub_menu=scale_menu),
     }
 )
+
+
+

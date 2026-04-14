@@ -35,6 +35,30 @@ class TheoryEngine:
         qualities = self.get_chord_qualities()
         bus.emit("CHORD_QUALITIES_CHANGED", qualities=qualities)
 
+    def toggle_extension(self, interval):
+        """Add or remove a chord extension (6,8,10,12)."""
+        if interval in self.extensions:
+            self.extensions.remove(interval)
+        else:
+            self.extensions.add(interval)
+        if self.filter_root:
+            self._update_effective_intervals()
+            self._emit_chord_qualities()
+            bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                    root_note=self.root_note, mode=self.mode)
+
+    def toggle_omission(self, interval):
+        """Add or remove an omission (2=third, 4=fifth)."""
+        if interval in self.omissions:
+            self.omissions.remove(interval)
+        else:
+            self.omissions.add(interval)
+        if self.filter_root:
+            self._update_effective_intervals()
+            self._emit_chord_qualities()
+            bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                    root_note=self.root_note, mode=self.mode)
+        
     def get_chord_qualities(self):
         """
         Return a dict mapping pitch_class (0-11) to:
@@ -118,17 +142,49 @@ class TheoryEngine:
 
     # --- Accidentals ---
     def modify_degree_by_note(self, note, delta):
+        """
+        Sharpen (delta=1) or flatten (delta=-1) the scale degree of the given note.
+        Includes collision detection with adjacent degrees.
+        """
         note_pc = (note - self.root_note) % 12
+        # Find which degree index this note corresponds to (using effective intervals)
+        degree_index = None
         for i, interval in enumerate(self.effective_intervals):
             if interval % 12 == note_pc:
-                self.accidental_offsets[i] = self.accidental_offsets.get(i, 0) + delta
-                self._update_effective_intervals()
-                self._emit_chord_qualities()
-                bus.emit("ACCIDENTALS_CHANGED", accidentals=self.accidental_offsets)
-                bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
-                         root_note=self.root_note, mode=self.mode)
-                return True
-        return False
+                degree_index = i
+                break
+        if degree_index is None:
+            return False  # not on a scale degree
+
+        # Collision check
+        num_degrees = len(self.effective_intervals)
+        current_val = self.effective_intervals[degree_index] % 12
+        target_val = (current_val + delta) % 12
+
+        prev_idx = (degree_index - 1) % num_degrees
+        next_idx = (degree_index + 1) % num_degrees
+        prev_val = self.effective_intervals[prev_idx] % 12
+        next_val = self.effective_intervals[next_idx] % 12
+
+        if target_val == prev_val or target_val == next_val:
+            # Collision would occur – reject the accidental
+            bus.emit("ADD_LOG", text="Cannot apply accidental: would collide with adjacent degree", color=(200,200,50))
+            return False
+
+        # Apply the accidental
+        self.accidental_offsets[degree_index] = self.accidental_offsets.get(degree_index, 0) + delta
+        self._update_effective_intervals()
+        self._emit_chord_qualities()
+        
+        if delta == 1:
+            bus.emit("ADD_LOG", text=f"Sharpened degree {degree_index+1}", color=(200,100,100))
+        else:            
+            bus.emit("ADD_LOG", text=f"Flattened degree {degree_index+1}", color=(100,100,200))
+
+        bus.emit("ACCIDENTALS_CHANGED", accidentals=self.accidental_offsets)
+        bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                root_note=self.root_note, mode=self.mode)
+        return True
 
     def reset_accidentals(self):
         self.accidental_offsets.clear()

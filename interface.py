@@ -1,6 +1,7 @@
 # interface.py
 import pygame
 import os
+from ui_components.accidentals import AccidentalsDisplay
 from ui_utils import Grid, Theme
 from ui_components.keyboard import Keyboard
 from ui_components.piano_roll import PianoRoll
@@ -11,20 +12,26 @@ from ui_components.console import Console
 from circle_of_fifths.chromatic_circle import ChromaticCircle
 from circle_of_fifths.degree_circle import DegreeCircle
 from event_bus import bus
+from ui_components.extensions_display import ExtensionsDisplay
+
 
 class GamidiInterface:
     def __init__(self, screen, radial_controller, theory_engine):
         self.screen = screen
         self.win_w, self.win_h = 736, 736
         self.grid = Grid(self.win_w)
-        self.theme = Theme().hue_shift(50)
-        
+        self.theme = Theme().hue_shift(200)
+        self.theory = theory_engine
+
         self.layer_piano = pygame.Surface((736, 736), pygame.SRCALPHA)
         self.layer_plates = pygame.Surface((736, 736), pygame.SRCALPHA)
         self.layer_content = pygame.Surface((736, 736), pygame.SRCALPHA)
 
         self.grating_asset = self._load_asset("assets/grating.png", (736, 736))
         self.plates_asset = self._load_asset("assets/plates.png", (736, 736))
+        if self.plates_asset:
+            self.plates_asset = self._tint_surface(self.plates_asset, self.theme.accent)
+
         self.background_image = self._load_background("assets/background.png")
 
         self.keyboard = Keyboard(self)
@@ -32,6 +39,8 @@ class GamidiInterface:
         self.radial_view = RadialMenuView(self, radial_controller)
         self.scale_hud = ScaleHUD(self)
         self.console = Console(self)
+        self.extensions_display = ExtensionsDisplay(self)
+        self.accidentals = AccidentalsDisplay(self)
 
         # Circle widgets
         self.chromatic_circle = ChromaticCircle(self, theory_engine)
@@ -75,6 +84,14 @@ class GamidiInterface:
             img = pygame.image.load(path).convert()
             return pygame.transform.scale(img, (self.win_w, self.win_h))
         return None
+    
+    def _tint_surface(self, surface, color):
+        """Return a tinted copy of the surface using BLEND_RGB_MULT."""
+        tinted = surface.copy()
+        
+        tinted.fill(color, special_flags=pygame.BLEND_RGB_MAX)
+        return tinted
+    
 
     def draw(self, state: UIState):
         # Clear and draw background
@@ -110,6 +127,12 @@ class GamidiInterface:
         # Circle of Fifths (active widget)
         rect_circle = self.grid.get_rect(2, 5, 6, 5)
         self.drawn_circle.draw(self.layer_content, rect_circle)
+
+        rect_extensions = self.grid.get_rect(1, 5, 9, 1)   # adjust position as needed
+        self.extensions_display.draw(self.layer_content, rect_extensions, self.theory)
+
+        rect_accidentals = self.grid.get_rect(1, 5, 1, 3)   # adjust position as needed
+        self.accidentals.draw(self.layer_content, rect_accidentals)
 
         # Composite
         self.screen.blit(self.layer_piano, (0, 0))

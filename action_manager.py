@@ -32,6 +32,36 @@ class ActionManager:
             bus.emit("TOGGLE_CIRCLE_RING")
 
 
+        # In _on_action method, add:
+
+        elif action_id == "sharpen_note" and value:
+            cursor_note = self.cursor.cursor_note  
+            self.theory.modify_degree_by_note(cursor_note, 1)
+            
+
+        elif action_id == "flatten_note" and value:
+            cursor_note = self.cursor.cursor_note
+            self.theory.modify_degree_by_note(cursor_note, -1)
+            
+
+        elif action_id == "clear_accidentals" and value:
+            self.theory.reset_accidentals()
+            bus.emit("ADD_LOG", text="Cleared all accidentals", color=(200,200,100))
+
+        #extensions
+        elif action_id == "toggle_extension_6" and value:
+            self.theory.toggle_extension(6)
+        elif action_id == "toggle_extension_8" and value:
+            self.theory.toggle_extension(8)
+        elif action_id == "toggle_extension_10" and value:
+            self.theory.toggle_extension(10)
+        elif action_id == "toggle_extension_12" and value:
+            self.theory.toggle_extension(12)
+        elif action_id == "toggle_omit_third" and value:
+            self.theory.toggle_omission(2)   # interval 2 = third
+        elif action_id == "toggle_omit_fifth" and value:
+            self.theory.toggle_omission(4)   # interval 4 = fifth
+
         # Mode setting
         elif action_id.startswith("set_mode_") and value:
             mode_name = action_id.replace("set_mode_", "").capitalize()

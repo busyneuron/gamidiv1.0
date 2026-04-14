@@ -71,7 +71,7 @@ class BaseCircle(ABC):
         self.entry_anim_wave_speed = 4.0  # cycles around the circle
 
         self.outer_radius_ratio = 0.85  
-        self.inner_radius_ratio = 0.5 
+        self.inner_radius_ratio = 0.53 
 
         # Colors (will be set by apply_theme)
         self._init_default_colors()
@@ -161,7 +161,7 @@ class BaseCircle(ABC):
         self.major_dim_triad = (139, 0, 0)
         self.major_dim_diatonic = (80, 180, 180)
         self.major_dim_other = (60, 60, 60)
-        self.major_dim_text = (200, 200, 200)
+        self.major_dim_text = (200, 200, 200, 0)
 
         self.minor_focused_tonic = (255, 80, 80)
         self.minor_focused_triad = (128, 0, 128)
@@ -175,37 +175,37 @@ class BaseCircle(ABC):
         self.minor_dim_triad = (6, 64, 43)
         self.minor_dim_diatonic = (80, 180, 180)
         self.minor_dim_other = (60, 60, 60)
-        self.minor_dim_text = (200, 200, 200)
+        self.minor_dim_text = (200, 200, 200, 0)
 
     def apply_theme(self, theme):
         # Major focused
-        self.major_focused_tonic = theme.adjust_brightness("accent", 1.4)
+        self.major_focused_tonic = theme.adjust_brightness("accent", 1.2)
         self.major_focused_triad = theme.adjust_brightness("color2", 1.2)
-        self.major_focused_diatonic = theme.adjust_brightness("neutral", 1.6)
-        self.major_focused_other = theme.adjust_brightness("neutral", 1.6)
+        self.major_focused_diatonic = theme.adjust_brightness("bright", 1.5)
+        self.major_focused_other = theme.adjust_brightness("bright", 1.5)
         self.major_focused_text = (255, 255, 255)
         self.major_focused_hover_color = (255, 255, 255)
         self.major_focused_hover_text = (0, 0, 0)
 
-        self.major_dim_tonic = tuple(int(c * 0.6) for c in theme.accent)
-        self.major_dim_triad = tuple(int(c * 0.6) for c in theme.color2)
-        self.major_dim_diatonic = tuple(int(c * 0.6) for c in theme.bright)
-        self.major_dim_other = tuple(int(c * 0.6) for c in theme.neutral)
-        self.major_dim_text = (200, 200, 200)
+        self.major_dim_tonic = theme.adjust_brightness("bright", 2)
+        self.major_dim_triad = theme.adjust_brightness("bright", 2)
+        self.major_dim_diatonic = theme.adjust_brightness("bright", 1.8)
+        self.major_dim_other = theme.adjust_brightness("bright", 2)
+        self.major_dim_text = (200, 200, 200, 0)
 
         self.minor_focused_tonic = theme.complementary
         self.minor_focused_triad = theme.color3
-        self.minor_focused_diatonic = theme.adjust_brightness("neutral", 1.6)
-        self.minor_focused_other = theme.adjust_brightness("neutral", 1.6)
+        self.minor_focused_diatonic = theme.adjust_brightness("bright", 1.5)
+        self.minor_focused_other = theme.adjust_brightness("bright", 1.5)
         self.minor_focused_text = (255, 255, 255)
         self.minor_focused_hover_color = (255, 255, 255)
         self.minor_focused_hover_text = (0, 0, 0)
 
-        self.minor_dim_tonic = tuple(int(c * 0.6) for c in theme.complementary)
-        self.minor_dim_triad = tuple(int(c * 0.6) for c in theme.color3)
-        self.minor_dim_diatonic = tuple(int(c * 0.6) for c in theme.bright)
-        self.minor_dim_other = tuple(int(c * 0.6) for c in theme.neutral)
-        self.minor_dim_text = (200, 200, 200)
+        self.minor_dim_tonic = theme.adjust_brightness("bright", 2)
+        self.minor_dim_triad = theme.adjust_brightness("bright", 2)
+        self.minor_dim_diatonic = theme.adjust_brightness("bright", 1.8)
+        self.minor_dim_other = theme.adjust_brightness("bright", 2)
+        self.minor_dim_text = (200, 200, 200,0)
 
     def _get_major_gate_style(self, is_focused, is_tonic, has_triad, is_diatonic):
         if not is_focused:
@@ -403,7 +403,7 @@ class BaseCircle(ABC):
         max_radius = min(rect.width, rect.height) // 2 - 10
         outer_radius = max_radius * self.outer_radius_ratio
         inner_radius = max_radius * self.inner_radius_ratio
-        is_focused = True
+        is_focused = self.focus_active
 
         self._draw_ring(surface, cx, cy, outer_radius, is_focused, is_major=True)
         self._draw_ring(surface, cx, cy, inner_radius, is_focused, is_major=False)

@@ -6,8 +6,8 @@ class PianoRoll:
     def __init__(self, parent):
         self.p = parent
         self.scroll_speed = 8.0
-        self.box_color = (0, 180, 255, 150)
-        self.active_box_color = (0, 255, 200, 200)
+        self.box_color = parent.theme.secondary
+        self.active_box_color = parent.theme.adjust_brightness("secondary", 1.5)
         self.white_width_scale = 0.8
         self.black_width_scale = 0.5
 
