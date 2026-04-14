@@ -74,7 +74,21 @@ class Theme:
                 # Copy non‑color attributes as is
                 setattr(new_theme, attr, val)
         return new_theme
-
+    
+    def adjust_brightness(self, color_name, factor):
+        """
+        Adjust brightness of a named theme color.
+        factor > 1 brightens, factor < 1 darkens.
+        Returns new RGB tuple (preserves alpha if present).
+        """
+        original = getattr(self, color_name)
+        r, g, b = original[:3]
+        r = min(255, max(0, int(r * factor)))
+        g = min(255, max(0, int(g * factor)))
+        b = min(255, max(0, int(b * factor)))
+        if len(original) == 4:
+            return (r, g, b, original[3])
+        return (r, g, b)
 
 class FontManager:
     def __init__(self, fonts_folder="fonts"):
@@ -88,24 +102,20 @@ class FontManager:
         self.default_font = pygame.font.SysFont("Arial", 12)
 
     def get_font(self, filename, size, bold=False, italic=False):
-        """
-        Load a font from the fonts folder.
-        filename: e.g., "Roboto-Regular.ttf"
-        size: font size in pixels
-        bold, italic: if the font file doesn't have separate bold/italic variants,
-                      you can use pygame's built-in styling (but it's better to load a specific file).
-        For simplicity, we ignore bold/italic here and rely on the filename.
-        """
         key = (filename, size)
         if key in self.cache:
             return self.cache[key]
         
         path = os.path.join(self.fonts_folder, filename)
+        
+        # ADD THESE PRINTS TO DEBUG
         if os.path.exists(path):
+            print(f"SUCCESS: Found font file at {os.path.abspath(path)}")
             font = pygame.font.Font(path, size)
         else:
-            # Fallback to system font with style
-            font = pygame.font.SysFont("Arial", size, bold, italic)
+            print(f"FAILED: Could not find {os.path.abspath(path)}. Using Arial instead!")
+            font = pygame.font.SysFont("seguisym.ttf", size, bold, italic)
+            
         self.cache[key] = font
         return font
 

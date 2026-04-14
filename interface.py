@@ -36,7 +36,9 @@ class GamidiInterface:
         # Circle widgets
         self.chromatic_circle = ChromaticCircle(self, theory_engine)
         self.degree_circle = DegreeCircle(self, theory_engine)
-        self.active_circle = self.chromatic_circle   # start with chromatic
+        self.chromatic_circle.mode_active = True
+        self.degree_circle.mode_active = False
+        self.drawn_circle = self.chromatic_circle
 
         # Apply theme to both
         self.chromatic_circle.apply_theme(self.theme)
@@ -50,13 +52,17 @@ class GamidiInterface:
         self.font_lcd = pygame.font.SysFont("Consolas", 14)
 
     def _on_toggle_circle_mode(self):
-        """Switch between chromatic and degree circles."""
-        if self.active_circle is self.chromatic_circle:
-            self.active_circle = self.degree_circle
+        if self.drawn_circle is self.chromatic_circle:
+            self.chromatic_circle.mode_active = False
+            self.drawn_circle = self.degree_circle
+            self.degree_circle.mode_active = True
             bus.emit("ADD_LOG", text="Circle mode: DEGREE", color=(200,200,100))
         else:
-            self.active_circle = self.chromatic_circle
+            self.degree_circle.mode_active = False
+            self.drawn_circle = self.chromatic_circle
+            self.chromatic_circle.mode_active = True
             bus.emit("ADD_LOG", text="Circle mode: CHROMATIC", color=(200,200,100))
+        self.drawn_circle.start_entry_animation()
 
     def _load_asset(self, path, size):
         if os.path.exists(path):
@@ -103,7 +109,7 @@ class GamidiInterface:
 
         # Circle of Fifths (active widget)
         rect_circle = self.grid.get_rect(2, 5, 6, 5)
-        self.active_circle.draw(self.layer_content, rect_circle)
+        self.drawn_circle.draw(self.layer_content, rect_circle)
 
         # Composite
         self.screen.blit(self.layer_piano, (0, 0))

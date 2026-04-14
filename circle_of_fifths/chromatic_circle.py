@@ -34,7 +34,7 @@ class ChromaticCircle(BaseCircle):
 
         # Highlight the new tonic gate
         self.selected_index = gate_index
-
+        self.selected_ring = self.active_ring
         bus.emit("ADD_LOG", text=f"Circle: {note_name} ({mode}) selected", color=(255,200,100))
 
     def get_center_text(self) -> str:
@@ -42,6 +42,6 @@ class ChromaticCircle(BaseCircle):
         return None
 
     def toggle_ring(self):
-        """Override to clear selected index when switching rings (optional)."""
         super().toggle_ring()
-        self.selected_index = None   # clear highlight when ring changes
+        self.selected_index = None
+        self.selected_ring = None

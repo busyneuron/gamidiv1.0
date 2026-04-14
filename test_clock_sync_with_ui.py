@@ -50,23 +50,17 @@ def main():
     # Voices
     voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
                   degree_offset=0, octave_offset=0, channel=0)
-    voice.set_motif([("quarter", "normal"), ("quarter rest", "normal"),("quarter rest", "normal"),("quarter rest", "normal")])
+    voice.set_motif([("quarter", "normal")])
     vm.add_voice(voice)
 
     voice2 = Voice(voice_id=1, event_bus=bus, theory_engine=theory,
-                   degree_offset=2, octave_offset=0, channel=0)
-    voice2.set_motif([("quarter rest", "normal"),("eighth", "normal"), ("eighth", "normal")])
+                   degree_offset=4, octave_offset=0, channel=0)
+    voice2.set_motif([("quarter", "normal")])
     vm.add_voice(voice2)
 
-    voice3 = Voice(voice_id=2, event_bus=bus, theory_engine=theory,
-                   degree_offset=4, octave_offset=0, channel=0)
-    voice3.set_motif([("quarter rest", "normal"),("eighth", "normal"), ("eighth", "normal")])
-    vm.add_voice(voice3)
+    
 
-    voice4 = Voice(voice_id=3, event_bus=bus, theory_engine=theory,
-                  degree_offset=-3, octave_offset=0, channel=0)
-    voice4.set_motif([("quarter rest", ""), ("quarter rest", "normal"),("quarter", "normal"),("quarter rest", "normal")])
-    vm.add_voice(voice4)
+    
 
     # ---- Cursor Controller ----
     cursor_ctrl = CursorController(theory, initial_note=60)
@@ -114,7 +108,7 @@ def main():
     running = True
 
     bus.emit("ADD_LOG", text="Developed by busyneuron", color=(255,255,255))
-    bus.emit("ADD_LOG", text="Welcome to GAMIDI v1.1 𝄞", color=(255,255,255))
+    bus.emit("ADD_LOG", text="Welcome to GAMIDI v1.2 𝄞", color=(255,255,255))
     
     try:
         while running:

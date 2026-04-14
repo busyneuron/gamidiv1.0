@@ -1,5 +1,7 @@
 # circle_of_fifths/base_circle.py
 import math
+import os
+from turtle import mode
 import pygame
 from abc import ABC, abstractmethod
 from event_bus import bus
@@ -15,11 +17,14 @@ class BaseCircle(ABC):
     def __init__(self, parent, theory_engine: TheoryEngine):
         self.parent = parent          # GamidiInterface (for fonts, theme)
         self.theory = theory_engine
-        self.active = False           # whether this widget receives stick input
+        self.focus_active = False   # set by FOCUS_CHANGED event
+        self.mode_active = False    # set by interface toggling
         self.active_ring = "major"    # "major" or "minor"
         self.hovered_index = None
         self.exit_timer = 0
         self.selected_index = None    # index of selected gate (0-11)
+        self.selected_roman = None   # store roman numeral for center text
+        self.selected_ring = None 
 
         # Chord qualities from theory
         self.chord_qualities = self.theory.get_chord_qualities()
@@ -32,6 +37,9 @@ class BaseCircle(ABC):
         except Exception as e:
             print(f"Warning: assets/circle.png not found. {e}")
 
+
+        self._load_selected_animation_frames(folder="assets/circle_degree_selected_animation")
+
         # Animation state
         self.current_radius = {}
         self.target_radius = {}
@@ -40,12 +48,12 @@ class BaseCircle(ABC):
         self.easing = "ease_out"
 
         # Radii for focused state
-        self.scale_factor = 1.2
+        self.scale_factor = 1.4
         self.radius_tonic = 14 * self.scale_factor
         self.radius_triad = 11 * self.scale_factor
         self.radius_diatonic = 10 * self.scale_factor
-        self.radius_other = 6 * self.scale_factor
-        self.radius_hover_major = 12 * self.scale_factor
+        self.radius_other = 7 * self.scale_factor
+        self.radius_hover_major = 14 * self.scale_factor
         self.radius_hover_minor = 10 * self.scale_factor
 
         # Radii for dimmed state
@@ -55,10 +63,26 @@ class BaseCircle(ABC):
         self.dim_radius_other = 6
 
         # Center text config (optional, can be overridden)
-        self.center_text_font = parent.theme.fonts.get_regular(28)
-        self.center_text_color = (255, 255, 255, 255)
+        self.center_text_font = parent.theme.fonts.get_regular(50)
+        self.center_text_color = parent.theme.dark
         self.center_text_offset_x = 0
         self.center_text_offset_y = 0
+
+        # Entry animation for mode switching
+        self.entry_anim_active = False
+        self.entry_anim_start_time = 0
+        self.entry_anim_duration = 800  # milliseconds
+        self.entry_anim_wave_speed = 4.0  # cycles around the circle
+
+        self.outer_radius_ratio = 0.85  
+        self.inner_radius_ratio = 0.5 
+
+        # Selected gate animation
+        self.selected_anim_frames = []          # list of pygame.Surface
+        self.selected_anim_frame_index = 0
+        self.selected_anim_last_update = 0
+        self.selected_anim_frame_delay = 100    # milliseconds per frame
+        self.selected_anim_playing = False
 
         # Colors (will be set by apply_theme)
         self._init_default_colors()
@@ -67,6 +91,72 @@ class BaseCircle(ABC):
         bus.on("RIGHT_STICK_UPDATED", self._on_stick_updated)
         bus.on("FOCUS_CHANGED", self._on_focus_changed)
         bus.on("CHORD_QUALITIES_CHANGED", self._on_chord_qualities_changed)
+        bus.on("TOGGLE_CIRCLE_RING", self._on_toggle_ring)
+
+
+    def _update_selected_animation(self):
+        if not self.selected_anim_playing or not self.selected_anim_frames:
+            return
+        now = pygame.time.get_ticks()
+        if now - self.selected_anim_last_update >= self.selected_anim_frame_delay:
+            self.selected_anim_frame_index = (self.selected_anim_frame_index + 1) % len(self.selected_anim_frames)
+            self.selected_anim_last_update = now
+
+    def _load_selected_animation_frames(self, folder="assets/circle_degree_selected_animation"):
+        import re
+        print(f"Looking for frames in: {os.path.abspath(folder)}")
+        frames = []
+        # Gather all matching files
+        pattern = re.compile(r'circle_degree_selected_(\d+)\.png')
+        files = []
+        for f in os.listdir(folder):
+            match = pattern.match(f)
+            if match:
+                num = int(match.group(1))
+                files.append((num, os.path.join(folder, f)))
+        # Sort by number
+        files.sort(key=lambda x: x[0])
+        for num, path in files:
+            try:
+                img = pygame.image.load(path).convert_alpha()
+                frames.append(img)
+                print(f"Loaded: {path}")
+            except Exception as e:
+                print(f"Failed to load {path}: {e}")
+        if frames:
+            self.selected_anim_frames = frames
+            self.selected_anim_playing = True
+            print(f"Loaded {len(frames)} animation frames")
+        else:
+            print("No animation frames found")
+
+    def _on_toggle_ring(self):
+        """Handle TOGGLE_CIRCLE_RING event. Only toggle if this circle is active."""
+        if self.mode_active:
+            self.toggle_ring()
+
+    def _get_tonic_index(self) -> int:
+        """Return the gate index of the current tonic (root) based on active ring."""
+        root_pc = self.theory.root_note % 12
+        if self.active_ring == "major":
+            for i, pc in enumerate(MAJOR_PITCHES):
+                if pc == root_pc:
+                    return i
+        else:
+            for i, pc in enumerate(MINOR_PITCHES):
+                if pc == root_pc:
+                    return i
+        return 0  # fallback
+    
+    def start_entry_animation(self):
+        """Trigger the entry wave animation."""
+        self.entry_anim_active = True
+        self.entry_anim_start_time = pygame.time.get_ticks()
+        # Use selected index if available, otherwise tonic
+        if self.selected_index is not None:
+            self.anim_center_index = self.selected_index
+        else:
+            self.anim_center_index = self._get_tonic_index()
 
     # ------------------------------------------------------------------
     # Abstract methods (must be overridden)
@@ -137,10 +227,10 @@ class BaseCircle(ABC):
 
     def apply_theme(self, theme):
         # Major focused
-        self.major_focused_tonic = theme.accent
-        self.major_focused_triad = theme.color2
-        self.major_focused_diatonic = theme.bright
-        self.major_focused_other = theme.neutral
+        self.major_focused_tonic = theme.adjust_brightness("accent", 1.4)
+        self.major_focused_triad = theme.adjust_brightness("color2", 1.2)
+        self.major_focused_diatonic = theme.adjust_brightness("neutral", 1.6)
+        self.major_focused_other = theme.adjust_brightness("neutral", 1.6)
         self.major_focused_text = (255, 255, 255)
         self.major_focused_hover_color = (255, 255, 255)
         self.major_focused_hover_text = (0, 0, 0)
@@ -153,8 +243,8 @@ class BaseCircle(ABC):
 
         self.minor_focused_tonic = theme.complementary
         self.minor_focused_triad = theme.color3
-        self.minor_focused_diatonic = theme.bright
-        self.minor_focused_other = theme.neutral
+        self.minor_focused_diatonic = theme.adjust_brightness("neutral", 1.6)
+        self.minor_focused_other = theme.adjust_brightness("neutral", 1.6)
         self.minor_focused_text = (255, 255, 255)
         self.minor_focused_hover_color = (255, 255, 255)
         self.minor_focused_hover_text = (0, 0, 0)
@@ -246,20 +336,45 @@ class BaseCircle(ABC):
             info = self.chord_qualities.get(pc, {})
             is_diatonic = info.get('diatonic', False)
             quality = info.get('quality')
-            is_tonic = (quality == 'tonic')
+            mode_is_minor = self.theory.mode in ["Minor", "Aeolian"]
+            is_tonic = (quality == 'tonic') and ((is_major and not mode_is_minor) or (not is_major and mode_is_minor))
             if is_major:
                 has_triad = (quality == 'major')
             else:
                 has_triad = (quality == 'minor')
 
-            is_selected = (self.selected_index == i)
+            is_selected = (self.selected_index == i and self.selected_ring == ring_key)
 
-            # Get style (may be overridden by subclass)
+            # --- Entry animation wave ---
+            pulse_factor = 0.0
+            if self.entry_anim_active:
+                elapsed = now - self.entry_anim_start_time
+                if elapsed >= self.entry_anim_duration:
+                    self.entry_anim_active = False
+                else:
+                    dist = min(abs(i - self.anim_center_index), 12 - abs(i - self.anim_center_index))
+                    delay = (dist / 12.0) * self.entry_anim_duration
+                    if elapsed >= delay:
+                        local_t = (elapsed - delay) / (self.entry_anim_duration * 0.3)
+                        if local_t <= 1.0:
+                            pulse_factor = 1.0 - local_t**0.5
+                            pulse_factor = min(1.0, pulse_factor * 2.0)
+
+            # Get base style
             color, target_radius, text_color = self.get_gate_style(
                 is_focused, is_major, is_tonic, has_triad, is_diatonic, is_selected
             )
 
-            # Hover override (highest priority)
+            
+
+            # Apply pulse effect
+            if pulse_factor > 0:
+                target_radius = target_radius * (1 + 0.3 * pulse_factor)
+                r, g, b = color[:3]
+                factor = 1 + 0.5 * pulse_factor
+                color = (min(255, int(r * factor)), min(255, int(g * factor)), min(255, int(b * factor)))
+
+            # Hover override
             if is_focused and self.hovered_index == i and self.active_ring == ring_key:
                 if is_major:
                     color = self.major_focused_hover_color
@@ -274,7 +389,17 @@ class BaseCircle(ABC):
             label = self.get_gate_label(i, is_major, info)
 
             animated_radius = self._update_radius_animation(ring_key, i, target_radius, now)
-            surf = self._get_circle_surface(color, int(animated_radius))
+
+            # --- Use animation frame for selected gate if available ---
+            if is_selected and self.selected_anim_playing and self.selected_anim_frames:
+                print(f"ANIMATING gate {i} frame {self.selected_anim_frame_index}")
+                frame = self.selected_anim_frames[self.selected_anim_frame_index]
+                scaled_frame = pygame.transform.smoothscale(frame, (int(animated_radius*2), int(animated_radius*2)))
+                surf = scaled_frame
+            else:
+                print(f"NO ANIM for gate {i}: selected={is_selected}, playing={self.selected_anim_playing}, frames={len(self.selected_anim_frames) if self.selected_anim_frames else 0}")
+                surf = self._get_circle_surface(color, int(animated_radius))
+
             x = cx + math.cos(angle) * ring_radius
             y = cy + math.sin(angle) * ring_radius
             rect = surf.get_rect(center=(int(x), int(y)))
@@ -288,10 +413,10 @@ class BaseCircle(ABC):
     # Input handling
     # ------------------------------------------------------------------
     def _on_focus_changed(self, mode: str):
-        self.active = (mode == "circle")
+        self.focus_active = (mode == "circle")
 
     def _on_stick_updated(self, x: float, y: float):
-        if not self.active:
+        if not (self.focus_active and self.mode_active):
             return
         # Optional inversion
         x = -x
@@ -330,11 +455,12 @@ class BaseCircle(ABC):
     # Public draw method
     # ------------------------------------------------------------------
     def draw(self, surface, rect):
+        self._update_selected_animation()
         cx = rect.centerx
         cy = rect.centery
         max_radius = min(rect.width, rect.height) // 2 - 10
-        outer_radius = max_radius * 0.8
-        inner_radius = max_radius * 0.5
+        outer_radius = max_radius * self.outer_radius_ratio
+        inner_radius = max_radius * self.inner_radius_ratio
         is_focused = True
 
         self._draw_ring(surface, cx, cy, outer_radius, is_focused, is_major=True)

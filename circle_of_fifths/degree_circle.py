@@ -5,24 +5,19 @@ from .base_circle import BaseCircle, MAJOR_NOTES, MINOR_NAMES, MAJOR_PITCHES, MI
 class DegreeCircle(BaseCircle):
     def __init__(self, parent, theory_engine):
         super().__init__(parent, theory_engine)
-        # Optional: custom colors for selected gate (can be set in apply_theme)
-        self.major_selected_color = (255, 215, 0)   # gold
-        self.minor_selected_color = (255, 215, 0)   # gold
-        self.radius_selected = self.radius_tonic    # same as tonic by default
+        self.major_selected_color = (155, 155, 155)
+        self.minor_selected_color = (255, 215, 0)
+        self.radius_selected = self.radius_tonic*1.3
 
     def apply_theme(self, theme):
-        """Override to also set selected colors from theme."""
         super().apply_theme(theme)
-        # Use theme.bright for selected color, or keep gold
-        self.major_selected_color = theme.bright
-        self.minor_selected_color = theme.bright
+        self.major_selected_color = theme.adjust_brightness("color2", 1.6)
+        self.minor_selected_color = theme.adjust_brightness("color3", 1.6)
 
     def get_gate_label(self, gate_index: int, is_major_ring: bool, chord_info: dict) -> str:
-        """Return roman numeral if gate is diatonic and matches ring quality; otherwise note name."""
         is_diatonic = chord_info.get('diatonic', False)
         quality = chord_info.get('quality')
         roman = chord_info.get('roman', '')
-
         if is_diatonic:
             if quality == 'tonic':
                 return roman
@@ -30,28 +25,23 @@ class DegreeCircle(BaseCircle):
                 return roman
             elif not is_major_ring and quality == 'minor':
                 return roman
-        # Fallback to note name
         return MAJOR_NOTES[gate_index] if is_major_ring else MINOR_NAMES[gate_index]
 
     def get_gate_style(self, is_focused: bool, is_major_ring: bool,
                        is_tonic: bool, has_triad: bool, is_diatonic: bool,
                        is_selected: bool):
-        """Override to use selected color for the chosen degree."""
         if is_selected:
-            # Use custom selected color and radius
             if is_major_ring:
                 return self.major_selected_color, self.radius_selected, self.major_focused_text
             else:
                 return self.minor_selected_color, self.radius_selected, self.minor_focused_text
         else:
-            # Fallback to base style (tonic, triad, diatonic, other)
             if is_major_ring:
                 return self._get_major_gate_style(is_focused, is_tonic, has_triad, is_diatonic)
             else:
                 return self._get_minor_gate_style(is_focused, is_tonic, has_triad, is_diatonic)
 
     def on_select(self, gate_index: int) -> None:
-        """Set filter pivot without changing root. Also highlight selected gate."""
         is_major = (self.active_ring == "major")
         pc = MAJOR_PITCHES[gate_index] if is_major else MINOR_PITCHES[gate_index]
         info = self.chord_qualities.get(pc, {})
@@ -59,7 +49,6 @@ class DegreeCircle(BaseCircle):
         quality = info.get('quality')
         roman = info.get('roman', '')
 
-        # Only treat as degree if it's a diatonic chord matching the ring quality (or tonic)
         should_treat = False
         if is_diatonic:
             if quality == 'tonic':
@@ -79,10 +68,12 @@ class DegreeCircle(BaseCircle):
                 pivot_note -= 12
 
             self.theory.set_filter_mode(True, pivot_note)
-            self.selected_index = gate_index   # highlight this gate
+            self.selected_index = gate_index
+            self.selected_roman = roman          
+            self.selected_ring = self.active_ring
+
             bus.emit("ADD_LOG", text=f"Degree: {roman} selected", color=(255,200,100))
         else:
-            # Non-diatonic or wrong quality: treat as chromatic selection (change root)
             note_name = MAJOR_NOTES[gate_index] if is_major else MINOR_NAMES[gate_index]
             mode = "Major" if is_major else "Minor"
             current_root = self.theory.root_note
@@ -96,20 +87,19 @@ class DegreeCircle(BaseCircle):
             self.theory.set_root(new_root)
             self.theory.set_mode(mode)
             self.theory.set_filter_mode(True, new_root)
-            self.selected_index = gate_index   # highlight new tonic
+            self.selected_index = gate_index
+            self.selected_roman = None  
+            self.selected_ring = self.active_ring
+
             bus.emit("ADD_LOG", text=f"Circle: {note_name} ({mode}) selected", color=(255,200,100))
 
     def get_center_text(self) -> str:
-        """Return the roman numeral of the selected gate (if any)."""
-        if self.selected_index is not None:
-            is_major = (self.active_ring == "major")
-            pc = MAJOR_PITCHES[self.selected_index] if is_major else MINOR_PITCHES[self.selected_index]
-            info = self.chord_qualities.get(pc, {})
-            roman = info.get('roman', '')
-            return roman
-        return None
+        """Return the stored roman numeral (no recomputation)."""
+        return self.selected_roman
 
     def toggle_ring(self):
-        """When toggling rings, clear selected index (or keep? We choose to clear)."""
+        saved_roman = self.selected_roman
         super().toggle_ring()
-        self.selected_index = None
+        self.selected_roman = saved_roman
+        self.selected_index = None   # clear highlight, but keep roman text
+        self.selected_ring = None    # clear selected ring
