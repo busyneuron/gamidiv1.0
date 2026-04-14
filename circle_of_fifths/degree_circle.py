@@ -7,7 +7,7 @@ class DegreeCircle(BaseCircle):
         super().__init__(parent, theory_engine)
         self.major_selected_color = (155, 155, 155)
         self.minor_selected_color = (255, 215, 0)
-        self.radius_selected = self.radius_tonic*1.3
+        self.radius_selected = self.radius_tonic*1.1
 
     def apply_theme(self, theme):
         super().apply_theme(theme)
