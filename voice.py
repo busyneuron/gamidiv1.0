@@ -55,6 +55,9 @@ class Voice:
         if self.tick_counter >= step.total_ticks:
             self.tick_counter = 0
             self.motif_index = (self.motif_index + 1) % len(self.compiled_motif)
+        
+        
+        
 
     def play_note(self, pitch):
         if pitch == self.last_played_note:

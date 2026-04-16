@@ -29,6 +29,9 @@ class TheoryEngine:
         for i, interval in enumerate(base):
             shift = self.accidental_offsets.get(i, 0)
             self.effective_intervals.append((interval + shift) % 12)
+        bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                 root_note=self.root_note, mode=self.mode)
+        
 
     def _emit_chord_qualities(self):
         """Compute chord qualities and emit event."""

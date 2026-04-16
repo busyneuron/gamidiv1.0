@@ -16,6 +16,21 @@ modes_menu = Menu(
     }
 )
 
+
+add_voice_menu = Menu(
+    name="intervals",
+    gates={
+        "N":  Gate(label="2nd", color=(255,100,100), action_id="add_voice_2nd"),
+        "NE": Gate(label="3rd", color=(255,100,100), action_id="add_voice_3rd"),
+        "E":  Gate(label="4th", color=(255,100,100), action_id="add_voice_4th"),
+        "SE": Gate(label="5th", color=(255,100,100), action_id="add_voice_5th"),
+        "S":  Gate(label="6th", color=(255,100,100), action_id="add_voice_6th"),
+        "SW": Gate(label="7th", color=(255,100,100), action_id="add_voice_7th"),
+        "W":  Gate(label="8ve", color=(255,100,100), action_id="add_voice_8ve"),
+        # You can add more directions if needed, e.g., "NW": ...
+    }
+)
+
 extensions_menu = Menu(
     name="extensions",
     gates={
@@ -46,6 +61,7 @@ root_menu = Menu(
         "E": Gate(label="MODES", color=(0, 180, 255), sub_menu=modes_menu),
         "S": Gate(label="EXT", color=(255,100,100), sub_menu=extensions_menu),
         "N": Gate(label="SCALE", color=(255,180,50), sub_menu=scale_menu),
+        "NW":Gate(label="ADD", color=(255,180,50), sub_menu=add_voice_menu ),
     }
 )
 

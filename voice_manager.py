@@ -1,5 +1,6 @@
 # voice_manager.py
 from event_bus import bus
+from voice import Voice
 
 class VoiceManager:
     def __init__(self, theory_engine=None):
@@ -8,11 +9,27 @@ class VoiceManager:
         self.chord = False
         self.cursor_note = 60
         self.theory = theory_engine
+        self.clock_metronome = 0 
+        self.master_clock = 0
+        
 
         bus.on("VOICE_NOTE_ON", self._on_voice_note_on)
         bus.on("VOICE_NOTE_OFF", self._on_voice_note_off)
         bus.on("CURSOR_MOVED", self._on_cursor_moved)
         bus.on("CLOCK_TICK", self._on_clock_tick)
+        
+
+        self.create_initial_voice(self.theory)
+
+    def metronome(self):
+        
+        return
+    
+    def create_initial_voice(self, theory):
+        voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
+                    degree_offset=0, octave_offset=0, channel=0)
+        voice.set_motif([("quarter", "normal")])
+        self.add_voice(voice)
 
     def add_voice(self, voice):
         self.voices[voice.id] = voice
@@ -95,3 +112,34 @@ class VoiceManager:
         # Update cursor
         self.cursor_note = new_cursor
         bus.emit("CURSOR_MOVED", new_note=self.cursor_note)
+
+    def _find_unique_offset(self, base_offset):
+        """Find the smallest multiple of base_offset not already used by any voice."""
+        current = base_offset
+        max_iter = 10
+        existing = {v.degree_offset for v in self.voices.values()}
+        for _ in range(max_iter):
+            if current not in existing:
+                return current
+            current += base_offset
+        return None
+
+    def stack_new_voice(self, base_degree_offset):
+        """Create a new voice with stacking offset. Returns the new Voice object or None."""
+        offset = self._find_unique_offset(base_degree_offset)
+        if offset is None:
+            return None
+        new_id = max(self.voices.keys(), default=-1) + 1
+        new_voice = Voice(
+            voice_id=new_id,
+            event_bus=bus,
+            theory_engine=self.theory,
+            degree_offset=offset,
+            octave_offset=0,
+            channel=0
+        )
+        # Set a default motif (e.g., quarter note)
+        new_voice.set_motif([("quarter", "normal")])
+        self.voices[new_id] = new_voice
+        # Optional: select the new voice (implement later if needed)
+        return new_voice

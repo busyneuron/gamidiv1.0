@@ -32,7 +32,9 @@ class ActionManager:
             bus.emit("TOGGLE_CIRCLE_RING")
 
 
-        # In _on_action method, add:
+        #------------------------------------------
+        #-------------- accidentals ---------------
+        #------------------------------------------
 
         elif action_id == "sharpen_note" and value:
             cursor_note = self.cursor.cursor_note  
@@ -42,13 +44,35 @@ class ActionManager:
         elif action_id == "flatten_note" and value:
             cursor_note = self.cursor.cursor_note
             self.theory.modify_degree_by_note(cursor_note, -1)
-            
+        
 
         elif action_id == "clear_accidentals" and value:
             self.theory.reset_accidentals()
             bus.emit("ADD_LOG", text="Cleared all accidentals", color=(200,200,100))
+        
+        #------------------------------------------
+        #-------------- add voice -----------------
+        #------------------------------------------
 
-        #extensions
+        elif action_id == "add_voice_2nd" and value:
+            self.vm.stack_new_voice(1)
+        elif action_id == "add_voice_3rd" and value:
+            self.vm.stack_new_voice(2)
+        elif action_id == "add_voice_4th" and value:
+            self.vm.stack_new_voice(3)
+        elif action_id == "add_voice_5th" and value:
+            self.vm.stack_new_voice(4)
+        elif action_id == "add_voice_6th" and value:
+            self.vm.stack_new_voice(5)
+        elif action_id == "add_voice_7th" and value:
+            self.vm.stack_new_voice(6)
+        elif action_id == "add_voice_8ve" and value:
+            self.vm.stack_new_voice(7)
+
+        #------------------------------------------
+        #-------------- extensions ----------------
+        #------------------------------------------
+
         elif action_id == "toggle_extension_6" and value:
             self.theory.toggle_extension(6)
         elif action_id == "toggle_extension_8" and value:
