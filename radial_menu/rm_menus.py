@@ -12,10 +12,8 @@ modes_menu = Menu(
         "S": Gate(label="MIN", color=(0, 180, 255), action_id="set_mode_minor", gate_type=GateType.ONE_SHOT),
         "SW": Gate(label="LOC", color=(0, 180, 255), action_id="set_mode_locrian", gate_type=GateType.ONE_SHOT),
         "W": Gate(label="MAJ", color=(0, 180, 255), action_id="set_mode_major", gate_type=GateType.ONE_SHOT),
-        
     }
 )
-
 
 add_voice_menu = Menu(
     name="intervals",
@@ -27,7 +25,6 @@ add_voice_menu = Menu(
         "S":  Gate(label="6th", color=(255,100,100), action_id="add_voice_6th"),
         "SW": Gate(label="7th", color=(255,100,100), action_id="add_voice_7th"),
         "W":  Gate(label="8ve", color=(255,100,100), action_id="add_voice_8ve"),
-        # You can add more directions if needed, e.g., "NW": ...
     }
 )
 
@@ -49,11 +46,34 @@ scale_menu = Menu(
         "N":  Gate(label="SHARP", color=(255,180,50), action_id="sharpen_note"),
         "NE": Gate(label="FLAT",  color=(50,200,255), action_id="flatten_note"),
         "E":  Gate(label="CLEAR", color=(200,200,100), action_id="clear_accidentals"),
-        
     }
 )
 
-# Root menu
+# NEW: Motif presets submenu
+motif_presets_menu = Menu(
+    name="motifs",
+    gates={
+        "N":  Gate(label="QUARTER", color=(100,200,100), action_id="set_motif_preset_quarter"),
+        "NE": Gate(label="EIGHTH",  color=(100,200,100), action_id="set_motif_preset_eighth"),
+        "E":  Gate(label="GALLOP",  color=(100,200,100), action_id="set_motif_preset_gallop"),
+        "S":  Gate(label="SYNC",    color=(100,200,100), action_id="set_motif_preset_syncopated"),
+    }
+)
+
+# NEW: Edit voice submenu
+edit_voice_menu = Menu(
+    name="edit_voice",
+    gates={
+        "N":  Gate(label="SEL ALL", color=(200,200,100), action_id="select_all_voices"),
+        "NE": Gate(label="CLR SEL", color=(200,100,100), action_id="clear_selected_voices"),
+        "E":  Gate(label="CLR ALL", color=(200,100,100), action_id="clear_all_voices"),
+        "S":  Gate(label="CH +",    color=(100,200,200), action_id="channel_up"),
+        "SW": Gate(label="CH -",    color=(100,200,200), action_id="channel_down"),
+        "W":  Gate(label="MOTIFS",  color=(100,200,100), sub_menu=motif_presets_menu),
+    }
+)
+
+# Root menu with added EDIT gate
 root_menu = Menu(
     name="root",
     gates={
@@ -61,9 +81,8 @@ root_menu = Menu(
         "E": Gate(label="MODES", color=(0, 180, 255), sub_menu=modes_menu),
         "S": Gate(label="EXT", color=(255,100,100), sub_menu=extensions_menu),
         "N": Gate(label="SCALE", color=(255,180,50), sub_menu=scale_menu),
-        "NW":Gate(label="ADD", color=(255,180,50), sub_menu=add_voice_menu ),
+        "NW": Gate(label="ADD", color=(255,180,50), sub_menu=add_voice_menu),
+        "NE": Gate(label="VOICES", color=(200,100,100), sub_menu="voices"),
+        "SE": Gate(label="EDIT", color=(200,200,100), sub_menu=edit_voice_menu),   
     }
 )
-
-
-

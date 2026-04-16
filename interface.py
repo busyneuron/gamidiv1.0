@@ -20,7 +20,7 @@ class GamidiInterface:
         self.screen = screen
         self.win_w, self.win_h = 736, 736
         self.grid = Grid(self.win_w)
-        self.theme = Theme().hue_shift(200)
+        self.theme = Theme().hue_shift(10)
         self.theory = theory_engine
 
         self.layer_piano = pygame.Surface((736, 736), pygame.SRCALPHA)
@@ -89,7 +89,7 @@ class GamidiInterface:
         """Return a tinted copy of the surface using BLEND_RGB_MULT."""
         tinted = surface.copy()
         
-        tinted.fill(color, special_flags=pygame.BLEND_RGB_MAX)
+        tinted.fill(color, special_flags=pygame.BLEND_RGB_MULT)
         return tinted
     
 

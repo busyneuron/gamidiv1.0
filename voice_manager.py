@@ -13,7 +13,7 @@ class VoiceManager:
         bus.on("VOICE_NOTE_ON", self._on_voice_note_on)
         bus.on("VOICE_NOTE_OFF", self._on_voice_note_off)
         bus.on("CURSOR_MOVED", self._on_cursor_moved)
-        bus.on("MASTER_TICK", self._on_master_tick)   # Changed from CLOCK_TICK
+        bus.on("MASTER_TICK", self._on_master_tick)  
 
         self.create_initial_voice(self.theory)
 
@@ -25,10 +25,12 @@ class VoiceManager:
 
     def add_voice(self, voice):
         self.voices[voice.id] = voice
+        bus.emit("VOICE_ADDED", voice_id=voice.id)
 
     def remove_voice(self, voice_id):
         if voice_id in self.voices:
             del self.voices[voice_id]
+            bus.emit("VOICE_REMOVED", voice_id=voice_id)
 
     def set_gate(self, state):
         if self.gate and not state:

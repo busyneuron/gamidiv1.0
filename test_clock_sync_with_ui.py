@@ -1,13 +1,13 @@
 # test_clock_sync_with_ui.py
 import pygame
-import time
-import mido
 import os
 from event_bus import bus
 from midi_manager import MidiManager
-from metronome import Metronome          # new import
+from metronome import Metronome
 from voice import Voice
 from voice_manager import VoiceManager
+from voice_editor import VoiceEditor                     # NEW
+from radial_menu.dynamic_menu_provider import DynamicMenuProvider   # NEW
 from theory_engine import TheoryEngine
 from input_manager import InputManager
 from axis_mapper import AxisMapper
@@ -27,7 +27,6 @@ from ui_components.scale_hud_controller import ScaleHUDController
 from ui_components.scale_hud_state import ScaleHUDState
 
 def main():
-    # Allow joystick events when window not focused
     os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1'
     
     pygame.init()
@@ -39,33 +38,39 @@ def main():
 
     input_name = "GAMIDI_SYNC"
     output_name = "Pypad"
-    # MidiManager no longer takes voice_manager argument
     midi = MidiManager(input_name=input_name, output_name=output_name)
 
     bus.on("SEND_NOTE_ON", midi.send_note_on)
     bus.on("SEND_NOTE_OFF", midi.send_note_off)
 
     # ---- Metronome (Master Clock) ----
-    metronome = Metronome()   # starts with playing=False, master_tick=0
-
-    scale_hud_ctrl = ScaleHUDController(ScaleHUDState(root_note=60, mode="Major"))
+    metronome = Metronome()
 
     # ---- Cursor Controller ----
     cursor_ctrl = CursorController(theory, initial_note=60)
-    vm = VoiceManager(theory)      # VoiceManager now uses MASTER_TICK internally
+    vm = VoiceManager(theory)
     vm.cursor_note = cursor_ctrl.cursor_note
+
+    # ---- Voice Editor (new) ----
+    voice_editor = VoiceEditor(vm, theory)
+
+    # ---- Dynamic Menu Provider (new) ----
+    menu_provider = DynamicMenuProvider(voice_manager=vm, theory_engine=theory)
+
+    # ---- Radial Menu Controller (updated) ----
+    radial_ctrl = RadialMenuController(root_menu, menu_provider=menu_provider)
+
+    scale_hud_ctrl = ScaleHUDController(ScaleHUDState(root_note=60, mode="Major"))
 
     # ---- Input & Action System ----
     input_mgr = InputManager()
     axis_mapper = AxisMapper()
     action_mapper = ActionMapper()
-    action_mgr = ActionManager(cursor_ctrl, vm, theory)
+    # ActionManager now receives voice_editor
+    action_mgr = ActionManager(cursor_ctrl, vm, theory, voice_editor=voice_editor)
 
     # ---- Focus Manager ----
     focus_mgr = FocusManager()
-
-    # ---- Radial Menu ----
-    radial_ctrl = RadialMenuController(root_menu)
 
     # ---- UI ----
     ui = GamidiInterface(screen, radial_ctrl, theory)
@@ -104,16 +109,9 @@ def main():
                 if event.type == pygame.QUIT:
                     running = False
 
-            # Update input: read buttons and axes
-            input_mgr.update()  # emits BUTTON_PRESSED, BUTTON_RELEASED, RAW_AXIS_MOVED
-
-            # Process MIDI clock (this emits CLOCK_TICK, TRANSPORT_*, SONG_POSITION)
+            input_mgr.update()
             midi.process_incoming()
-            # Metronome listens to those events and emits MASTER_TICK when appropriate
-
-            # Update UI state
             ui.draw(ui_state)
-
             clock.tick(60)
     except KeyboardInterrupt:
         print("Stopping...")
