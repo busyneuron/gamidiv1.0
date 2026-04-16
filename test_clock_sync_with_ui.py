@@ -5,6 +5,7 @@ import mido
 import os
 from event_bus import bus
 from midi_manager import MidiManager
+from metronome import Metronome          # new import
 from voice import Voice
 from voice_manager import VoiceManager
 from theory_engine import TheoryEngine
@@ -38,46 +39,26 @@ def main():
 
     input_name = "GAMIDI_SYNC"
     output_name = "Pypad"
-    vm = VoiceManager(theory)
-    midi = MidiManager(input_name=input_name, output_name=output_name, voice_manager=vm)
+    # MidiManager no longer takes voice_manager argument
+    midi = MidiManager(input_name=input_name, output_name=output_name)
 
     bus.on("SEND_NOTE_ON", midi.send_note_on)
     bus.on("SEND_NOTE_OFF", midi.send_note_off)
 
-    
+    # ---- Metronome (Master Clock) ----
+    metronome = Metronome()   # starts with playing=False, master_tick=0
+
     scale_hud_ctrl = ScaleHUDController(ScaleHUDState(root_note=60, mode="Major"))
-
-    # # Voices
-    # voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
-    #               degree_offset=0, octave_offset=0, channel=0)
-    # voice.set_motif([("half", "normal")])
-    # vm.add_voice(voice)
-
-    # voice2 = Voice(voice_id=1, event_bus=bus, theory_engine=theory,
-    #                degree_offset=1, octave_offset=0, channel=0)
-    # voice2.set_motif([("half", "normal")])
-    # vm.add_voice(voice2)
-
-    # voice3 = Voice(voice_id=2, event_bus=bus, theory_engine=theory,
-    #                degree_offset=2, octave_offset=0, channel=0)
-    # voice3.set_motif([("half", "normal")])
-    # vm.add_voice(voice3)
-
-    # voice4 = Voice(voice_id=3, event_bus=bus, theory_engine=theory,
-    #                degree_offset=3, octave_offset=0, channel=0)
-    # voice4.set_motif([("half", "normal")])
-    # vm.add_voice(voice4)
 
     # ---- Cursor Controller ----
     cursor_ctrl = CursorController(theory, initial_note=60)
+    vm = VoiceManager(theory)      # VoiceManager now uses MASTER_TICK internally
     vm.cursor_note = cursor_ctrl.cursor_note
 
-   
     # ---- Input & Action System ----
     input_mgr = InputManager()
     axis_mapper = AxisMapper()
     action_mapper = ActionMapper()
-    # ---- Action Manager ----
     action_mgr = ActionManager(cursor_ctrl, vm, theory)
 
     # ---- Focus Manager ----
@@ -126,10 +107,11 @@ def main():
             # Update input: read buttons and axes
             input_mgr.update()  # emits BUTTON_PRESSED, BUTTON_RELEASED, RAW_AXIS_MOVED
 
-            # Process MIDI clock
+            # Process MIDI clock (this emits CLOCK_TICK, TRANSPORT_*, SONG_POSITION)
             midi.process_incoming()
+            # Metronome listens to those events and emits MASTER_TICK when appropriate
 
-            # Update UI state (keyboard and piano roll are event-driven)
+            # Update UI state
             ui.draw(ui_state)
 
             clock.tick(60)

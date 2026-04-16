@@ -1,10 +1,9 @@
 # midi_manager.py
 import mido
-import threading
 from event_bus import bus
 
 class MidiManager:
-    def __init__(self, input_name=None, output_name=None, voice_manager=None):
+    def __init__(self, input_name=None, output_name=None):
         def find_port(name, port_list):
             for p in port_list:
                 if name in p:
@@ -17,7 +16,6 @@ class MidiManager:
         except Exception as e:
             print(f"MIDI Error: {e}")
             exit()
-        self.vm = voice_manager
 
     def send_note_on(self, note, velocity, channel=0):
         if self.output_port:
@@ -38,13 +36,15 @@ class MidiManager:
         for msg in self.input_port.iter_pending():
             if msg.type == 'clock':
                 bus.emit("CLOCK_TICK")
-            elif msg.type in ('start', 'continue'):
-                bus.emit("CLOCK_RESET")
-            # You can handle other messages later
+            elif msg.type == 'start':
+                bus.emit("TRANSPORT_START")
+            elif msg.type == 'continue':
+                bus.emit("TRANSPORT_CONTINUE")
+            elif msg.type == 'stop':
+                bus.emit("TRANSPORT_STOP")
             elif msg.type == "songpos":
-                self.vm.master_clock = self.vm.master_clock * msg.pos
-                bus.emit("SYNC_POS", pos=msg.songpos)
-            
+                bus.emit("SONG_POSITION", pos=msg.pos)
+            # You can handle other messages later
 
     def close(self):
         self.running = False
