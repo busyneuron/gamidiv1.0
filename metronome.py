@@ -5,6 +5,8 @@ class Metronome:
     def __init__(self):
         self.master_tick = 0
         self.playing = False
+        self.was_playing = False
+        self._first_tick_received = False
         self._setup_event_listeners()
 
     def _setup_event_listeners(self):
@@ -15,29 +17,36 @@ class Metronome:
         bus.on("SONG_POSITION", self._on_song_position)
 
     def _on_clock_tick(self):
+        # Auto-start on first tick if not already playing
+        if not self._first_tick_received and not self.playing:
+            self.playing = True
+            bus.emit("MASTER_TICK", tick=self.master_tick)
+        self._first_tick_received = True
+
+        self.master_tick += 1
         if self.playing:
-            self.master_tick += 1
             bus.emit("MASTER_TICK", tick=self.master_tick)
 
     def _on_start(self):
-        # Start from beginning: reset tick to 0
-        self.master_tick = 0
         self.playing = True
+        self.was_playing = False
         bus.emit("MASTER_TICK", tick=self.master_tick)
 
     def _on_continue(self):
-        # Continue from current position
         self.playing = True
+        self.was_playing = False
         bus.emit("MASTER_TICK", tick=self.master_tick)
 
     def _on_stop(self):
+        self.was_playing = self.playing
         self.playing = False
-        # Do NOT reset tick; just stop advancing
 
     def _on_song_position(self, pos):
-        # pos is the raw SPP value (0-16383)
-        # Convert to ticks: 1 SPP = 6 MIDI clocks (since PPQN=24)
         new_tick = pos * 6
         self.master_tick = new_tick
-        # Even if stopped, we reposition so that when continue is hit, it starts from correct place
-        bus.emit("MASTER_TICK", tick=self.master_tick)
+        if self.was_playing:
+            self.playing = True
+            self.was_playing = False
+            bus.emit("MASTER_TICK", tick=self.master_tick)
+        elif self.playing:
+            bus.emit("MASTER_TICK", tick=self.master_tick)

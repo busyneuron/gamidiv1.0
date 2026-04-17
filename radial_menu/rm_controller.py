@@ -134,6 +134,8 @@ class RadialMenuController:
         bus.emit("RADIAL_STATE_CHANGED", state=self.state)
 
     def _activate_gate(self, gate: Gate):
+        if gate.action_id is None:
+            return
         if gate.gate_type == GateType.ONE_SHOT:
             bus.emit("INVOKE_ACTION", action_id=gate.action_id, value=True)
         elif gate.gate_type == GateType.TOGGLE:

@@ -44,7 +44,8 @@ class MidiManager:
                 bus.emit("TRANSPORT_STOP")
             elif msg.type == "songpos":
                 bus.emit("SONG_POSITION", pos=msg.pos)
-            # You can handle other messages later
+            else:
+                print(f"[MIDI IN] {msg.type} (data: {msg.dict() if hasattr(msg, 'dict') else msg})")
 
     def close(self):
         self.running = False

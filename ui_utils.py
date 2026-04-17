@@ -122,10 +122,10 @@ class FontManager:
         
         # ADD THESE PRINTS TO DEBUG
         if os.path.exists(path):
-            print(f"SUCCESS: Found font file at {os.path.abspath(path)}")
+            #(f"SUCCESS: Found font file at {os.path.abspath(path)}")
             font = pygame.font.Font(path, size)
         else:
-            print(f"FAILED: Could not find {os.path.abspath(path)}. Using Arial instead!")
+            #print(f"FAILED: Could not find {os.path.abspath(path)}. Using Arial instead!")
             font = pygame.font.SysFont("seguisym.ttf", size, bold, italic)
             
         self.cache[key] = font
