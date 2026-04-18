@@ -90,6 +90,17 @@ class ActionManager:
         elif action_id.startswith("set_motif_preset_") and value and self.voice_editor:
             preset_name = action_id.replace("set_motif_preset_", "")
             self.voice_editor.set_selected_voice_motif(preset_name)
+        
+                # ----- Voice mode and sustain quantization -----
+        elif action_id == "set_voice_mode_ostinato" and value and self.voice_editor:
+            self.voice_editor.set_selected_voice_mode("ostinato")
+        elif action_id == "set_voice_mode_sustain" and value and self.voice_editor:
+            self.voice_editor.set_selected_voice_mode("sustain")
+        elif action_id == "set_sustain_quant_quarter" and value and self.voice_editor:
+            self.voice_editor.set_selected_voice_sustain_quantization(24)
+        elif action_id == "set_sustain_quant_eighth" and value and self.voice_editor:
+            self.voice_editor.set_selected_voice_sustain_quantization(12)
+
 
         # Momentary actions (held)
         elif action_id in self.momentary_actions:

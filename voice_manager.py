@@ -13,7 +13,8 @@ class VoiceManager:
         bus.on("VOICE_NOTE_ON", self._on_voice_note_on)
         bus.on("VOICE_NOTE_OFF", self._on_voice_note_off)
         bus.on("CURSOR_MOVED", self._on_cursor_moved)
-        bus.on("MASTER_TICK", self._on_master_tick)  
+        bus.on("MASTER_TICK", self._on_master_tick)
+        bus.on("SONG_POSITION", self._on_song_position)
 
         self.create_initial_voice(self.theory)
 
@@ -50,11 +51,27 @@ class VoiceManager:
 
     def _on_cursor_moved(self, new_note):
         self.cursor_note = new_note
+        # Only sustain voices need to know about cursor moves
+        for voice in self.voices.values():
+            if voice.mode == "sustain":
+                voice.on_cursor_moved_sustain(new_note)
 
     def _on_master_tick(self, tick):
-        """Called on every master tick with the global tick count."""
         for voice in self.voices.values():
-            voice.on_master_tick(tick, self.cursor_note)
+            if voice.mode == "sustain":
+                # Sustain mode: only tick if gate is on, otherwise release
+                if self.gate:
+                    voice.on_master_tick(tick, self.cursor_note)
+                else:
+                    if voice.sustain_current_note is not None:
+                        voice.release_note()
+            else:  # ostinato
+                # Ostinato always ticks; gate is enforced in _on_voice_note_on
+                voice.on_master_tick(tick, self.cursor_note)
+
+    def _on_song_position(self, pos):
+        for voice in self.voices.values():
+            voice.reset_for_song_position()
 
     def _should_play_voice(self, voice):
         if not self.gate:
@@ -127,5 +144,16 @@ class VoiceManager:
             channel=0
         )
         new_voice.set_motif([("quarter", "normal")])
-        self.voices[new_id] = new_voice
+        self.add_voice(new_voice)
         return new_voice
+
+    # Helper methods for mode/quantization
+    def set_voice_mode(self, voice_id, mode):
+        voice = self.voices.get(voice_id)
+        if voice:
+            voice.set_mode(mode)
+
+    def set_voice_sustain_quantization(self, voice_id, ticks):
+        voice = self.voices.get(voice_id)
+        if voice:
+            voice.set_sustain_quantization(ticks)

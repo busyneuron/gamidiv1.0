@@ -114,3 +114,22 @@ class VoiceEditor:
             if voice:
                 voice.set_motif(motif)
         bus.emit("ADD_LOG", text=f"Applied motif '{preset_name}' to {len(self._selected_ids)} voice(s)", color=(100,200,100))
+
+        # --- Mode and quantization for selected voices ---
+    def set_selected_voice_mode(self, mode):
+        """Set mode ('ostinato' or 'sustain') for all selected voices."""
+        if mode not in ("ostinato", "sustain"):
+            return
+        for vid in self._selected_ids:
+            voice = self.vm.voices.get(vid)
+            if voice:
+                voice.set_mode(mode)
+        bus.emit("ADD_LOG", text=f"Set mode '{mode}' for {len(self._selected_ids)} voice(s)", color=(100,200,200))
+
+    def set_selected_voice_sustain_quantization(self, ticks):
+        """Set sustain quantization (in ticks) for selected voices."""
+        for vid in self._selected_ids:
+            voice = self.vm.voices.get(vid)
+            if voice:
+                voice.set_sustain_quantization(ticks)
+        bus.emit("ADD_LOG", text=f"Set sustain quantization to {ticks} ticks for {len(self._selected_ids)} voice(s)", color=(100,200,200))

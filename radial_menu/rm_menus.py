@@ -60,6 +60,15 @@ motif_presets_menu = Menu(
     }
 )
 
+# Voice mode submenu
+voice_mode_menu = Menu(
+    name="voice_mode",
+    gates={
+        "N": Gate(label="OST", color=(100,200,100), action_id="set_voice_mode_ostinato"),
+        "S": Gate(label="SUS", color=(100,200,200), action_id="set_voice_mode_sustain"),
+    }
+)
+
 # NEW: Edit voice submenu
 edit_voice_menu = Menu(
     name="edit_voice",
@@ -70,6 +79,7 @@ edit_voice_menu = Menu(
         "S":  Gate(label="CH +",    color=(100,200,200), action_id="channel_up"),
         "SW": Gate(label="CH -",    color=(100,200,200), action_id="channel_down"),
         "W":  Gate(label="MOTIFS",  color=(100,200,100), sub_menu=motif_presets_menu),
+        "NW":  Gate(label="MODE",    color=(150,150,200), sub_menu=voice_mode_menu),
     }
 )
 
