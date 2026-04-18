@@ -90,6 +90,8 @@ class ActionManager:
         elif action_id.startswith("set_motif_preset_") and value and self.voice_editor:
             preset_name = action_id.replace("set_motif_preset_", "")
             self.voice_editor.set_selected_voice_motif(preset_name)
+        elif action_id == "set_lead":
+            self.voice_editor.jump_cursor_to_selected_voice()
         
                 # ----- Voice mode and sustain quantization -----
         elif action_id == "set_voice_mode_ostinato" and value and self.voice_editor:
@@ -101,6 +103,27 @@ class ActionManager:
         elif action_id == "set_sustain_quant_eighth" and value and self.voice_editor:
             self.voice_editor.set_selected_voice_sustain_quantization(12)
 
+                # ----- Jump intervals (momentary) -----
+        elif action_id == "set_jump_interval_3rd" and self.cursor:
+            if value:
+                self.cursor.set_temp_jump_interval(2)   # 3rd = 2 scale degrees
+            else:
+                self.cursor.clear_temp_jump_interval()
+        elif action_id == "set_jump_interval_4th" and self.cursor:
+            if value:
+                self.cursor.set_temp_jump_interval(3)
+            else:
+                self.cursor.clear_temp_jump_interval()
+        elif action_id == "set_jump_interval_5th" and self.cursor:
+            if value:
+                self.cursor.set_temp_jump_interval(4)
+            else:
+                self.cursor.clear_temp_jump_interval()
+        elif action_id == "set_jump_interval_6th" and self.cursor:
+            if value:
+                self.cursor.set_temp_jump_interval(5)
+            else:
+                self.cursor.clear_temp_jump_interval()
 
         # Momentary actions (held)
         elif action_id in self.momentary_actions:

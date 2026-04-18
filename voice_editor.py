@@ -100,6 +100,13 @@ class VoiceEditor:
             ("eighth rest", ""),
             ("eighth", "staccato"),
             ("quarter", "normal")
+        ],
+        "offbeat":[
+            ("eighth rest", "normal"),
+            ("eighth", "normal"),
+            ("eighth rest", "normal"),
+            ("eighth", "normal"),
+            
         ]
     }
 
@@ -133,3 +140,11 @@ class VoiceEditor:
             if voice:
                 voice.set_sustain_quantization(ticks)
         bus.emit("ADD_LOG", text=f"Set sustain quantization to {ticks} ticks for {len(self._selected_ids)} voice(s)", color=(100,200,200))
+    
+    def jump_cursor_to_selected_voice(self):
+        if len(self._selected_ids) > 1:
+            bus.emit("ADD_LOG", text=f"Only one voice selected can be the new lead", color=(100,200,200))
+            return
+        else:
+            selected_voice = list(self._selected_ids)[0]
+            self.vm.jump_cursor_to_voice(selected_voice)

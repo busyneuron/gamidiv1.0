@@ -314,3 +314,40 @@ class TheoryEngine:
         degree_offset = diff % len(legal)
         octave_offset = diff // len(legal)
         return degree_offset, octave_offset
+
+    # theory_engine.py (add inside class TheoryEngine)
+    def get_reachable_notes(self, cursor_note: int, interval: int) -> set:
+        """
+        Return set of legal notes reachable from cursor_note by repeatedly applying
+        get_next_note with the given interval (in scale degrees).
+        """
+        if interval <= 1:
+            return set()
+        legal = self.get_legal_notes()
+        if not legal:
+            return set()
+        reachable = set()
+        # Upward
+        note = cursor_note
+        while True:
+            next_note = self.get_next_note(note, 1, interval, chromatic=False)
+            if next_note == note:
+                break
+            note = next_note
+            if note < 0 or note > 127:
+                break
+            if note in legal:
+                reachable.add(note)
+        # Downward
+        note = cursor_note
+        while True:
+            next_note = self.get_next_note(note, -1, interval, chromatic=False)
+            if next_note == note:
+                break
+            note = next_note
+            if note < 0 or note > 127:
+                break
+            if note in legal:
+                reachable.add(note)
+        reachable.add(cursor_note)
+        return reachable

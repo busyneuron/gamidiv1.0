@@ -57,6 +57,7 @@ motif_presets_menu = Menu(
         "NE": Gate(label="EIGHTH",  color=(100,200,100), action_id="set_motif_preset_eighth"),
         "E":  Gate(label="GALLOP",  color=(100,200,100), action_id="set_motif_preset_gallop"),
         "S":  Gate(label="SYNC",    color=(100,200,100), action_id="set_motif_preset_syncopated"),
+        "SW":  Gate(label="OFFB",    color=(100,200,100), action_id="set_motif_preset_offbeat"),
     }
 )
 
@@ -76,10 +77,11 @@ edit_voice_menu = Menu(
         "N":  Gate(label="SEL ALL", color=(200,200,100), action_id="select_all_voices"),
         "NE": Gate(label="CLR SEL", color=(200,100,100), action_id="clear_selected_voices"),
         "E":  Gate(label="CLR ALL", color=(200,100,100), action_id="clear_all_voices"),
-        "S":  Gate(label="CH +",    color=(100,200,200), action_id="channel_up"),
+        "W":  Gate(label="CH +",    color=(100,200,200), action_id="channel_up"),
         "SW": Gate(label="CH -",    color=(100,200,200), action_id="channel_down"),
-        "W":  Gate(label="MOTIFS",  color=(100,200,100), sub_menu=motif_presets_menu),
+        "S":  Gate(label="MOTIFS",  color=(100,200,100), sub_menu=motif_presets_menu),
         "NW":  Gate(label="MODE",    color=(150,150,200), sub_menu=voice_mode_menu),
+        "SE":  Gate(label="SET LEAD",    color=(150,150,200), action_id="set_lead"),
     }
 )
 
@@ -87,12 +89,12 @@ edit_voice_menu = Menu(
 root_menu = Menu(
     name="root",
     gates={
-        "W": Gate(label="GATE", color=(0, 255, 100), action_id="toggle_gate", gate_type=GateType.TOGGLE),
+        #"W": Gate(label="GATE", color=(0, 255, 100), action_id="toggle_gate", gate_type=GateType.TOGGLE),
         "E": Gate(label="MODES", color=(0, 180, 255), sub_menu=modes_menu),
         "S": Gate(label="EXT", color=(255,100,100), sub_menu=extensions_menu),
         "N": Gate(label="SCALE", color=(255,180,50), sub_menu=scale_menu),
         "NW": Gate(label="ADD", color=(255,180,50), sub_menu=add_voice_menu),
         "NE": Gate(label="VOICES", color=(200,100,100), sub_menu="voices"),
-        "SE": Gate(label="EDIT", color=(200,200,100), sub_menu=edit_voice_menu),   
+        "W": Gate(label="EDIT", color=(200,200,100), sub_menu=edit_voice_menu),   
     }
 )

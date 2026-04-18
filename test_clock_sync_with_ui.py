@@ -84,7 +84,7 @@ def main():
         root_note=60,
         last_trigger_time={}
     )
-    keyboard_ctrl = KeyboardController(keyboard_state)
+    keyboard_ctrl = KeyboardController(keyboard_state, theory)
 
     piano_roll_state = PianoRollState()
     piano_roll_ctrl = PianoRollController(piano_roll_state)

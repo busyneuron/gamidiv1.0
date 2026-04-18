@@ -11,6 +11,11 @@ class ActionMapper:
             6: "jump_to_voice2",
             4: "toggle_circle_ring",
             8: "toggle_circle_mode",
+
+            0: "set_jump_interval_3rd",   # X button
+            1: "set_jump_interval_4th",   # Circle button
+            2: "set_jump_interval_5th",   # Triangle button
+            3: "set_jump_interval_6th",   # Square button
         }
         bus.on("BUTTON_PRESSED", self._on_button_event)
         bus.on("BUTTON_RELEASED", self._on_button_event)
