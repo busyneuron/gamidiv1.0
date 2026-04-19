@@ -102,28 +102,9 @@ class ActionManager:
             self.voice_editor.set_selected_voice_sustain_quantization(24)
         elif action_id == "set_sustain_quant_eighth" and value and self.voice_editor:
             self.voice_editor.set_selected_voice_sustain_quantization(12)
-
-                # ----- Jump intervals (momentary) -----
-        elif action_id == "set_jump_interval_3rd" and self.cursor:
-            if value:
-                self.cursor.set_temp_jump_interval(2)   # 3rd = 2 scale degrees
-            else:
-                self.cursor.clear_temp_jump_interval()
-        elif action_id == "set_jump_interval_4th" and self.cursor:
-            if value:
-                self.cursor.set_temp_jump_interval(3)
-            else:
-                self.cursor.clear_temp_jump_interval()
-        elif action_id == "set_jump_interval_5th" and self.cursor:
-            if value:
-                self.cursor.set_temp_jump_interval(4)
-            else:
-                self.cursor.clear_temp_jump_interval()
-        elif action_id == "set_jump_interval_6th" and self.cursor:
-            if value:
-                self.cursor.set_temp_jump_interval(5)
-            else:
-                self.cursor.clear_temp_jump_interval()
+        
+        elif action_id.startswith("jump_interval_") and value is not None:
+            bus.emit("ACTION_STATE_CHANGED", action_id=action_id, active=value)
 
         # Momentary actions (held)
         elif action_id in self.momentary_actions:
