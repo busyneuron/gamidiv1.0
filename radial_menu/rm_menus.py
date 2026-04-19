@@ -40,12 +40,23 @@ extensions_menu = Menu(
     }
 )
 
+filter_quality_menu = Menu(
+    name="filter_quality",
+    gates={
+        "N": Gate(label="MAJ", color=(100,200,100), action_id="set_filter_quality_major"),
+        "E": Gate(label="MIN", color=(100,200,100), action_id="set_filter_quality_minor"),
+        "S": Gate(label="AUG", color=(200,100,200), action_id="set_filter_quality_augmented"),
+        "W": Gate(label="DIM", color=(200,100,100), action_id="set_filter_quality_diminished"),
+    }
+)
+
 scale_menu = Menu(
     name="scale",
     gates={
         "N":  Gate(label="SHARP", color=(255,180,50), action_id="sharpen_note"),
         "NE": Gate(label="FLAT",  color=(50,200,255), action_id="flatten_note"),
         "E":  Gate(label="CLEAR", color=(200,200,100), action_id="clear_accidentals"),
+        "NW":  Gate(label="QUALITY", color=(200,200,100), sub_menu=filter_quality_menu),
     }
 )
 
@@ -58,6 +69,7 @@ motif_presets_menu = Menu(
         "E":  Gate(label="GALLOP",  color=(100,200,100), action_id="set_motif_preset_gallop"),
         "S":  Gate(label="SYNC",    color=(100,200,100), action_id="set_motif_preset_syncopated"),
         "SW":  Gate(label="OFFB",    color=(100,200,100), action_id="set_motif_preset_offbeat"),
+        "SE":  Gate(label="HALF",    color=(100,200,100), action_id="set_motif_preset_half"),
     }
 )
 

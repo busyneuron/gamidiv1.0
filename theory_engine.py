@@ -10,6 +10,7 @@ class TheoryEngine:
         self.filter_pivot_note = None
         self.extensions = set()               # intervals 6,8,10,12
         self.omissions = set()                # intervals 2,4
+        self.filter_quality = "major" 
 
         self.SCALES = {
             "Major": [0,2,4,5,7,9,11],
@@ -241,32 +242,59 @@ class TheoryEngine:
                     legal.add(note)
         return legal
 
+    def set_filter_quality(self, quality):
+        if quality in ("major", "minor", "augmented", "diminished"):
+            self.filter_quality = quality
+            if self.filter_root:
+                self._update_effective_intervals()
+                self._emit_chord_qualities()
+                bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
+                         root_note=self.root_note, mode=self.mode)
+
+    # Modify _get_filter_legal_notes
     def _get_filter_legal_notes(self):
-        # Find degree index of pivot note
-        pivot_pc = (self.filter_pivot_note - self.root_note) % 12
-        pivot_degree = None
-        for i, interval in enumerate(self.effective_intervals):
-            if interval % 12 == pivot_pc:
-                pivot_degree = i
-                break
-        if pivot_degree is None:
+        if self.filter_pivot_note is None:
             return self._get_scale_legal_notes()
 
-        chord_degrees = [pivot_degree, pivot_degree+2, pivot_degree+4]
-        for ext in self.extensions:
-            chord_degrees.append(pivot_degree + ext)
-        # Remove omitted degrees (relative to pivot)
-        chord_degrees = [d for d in chord_degrees if (d - pivot_degree) not in self.omissions]
+        # Define chord intervals (semitones from root) based on quality
+        if self.filter_quality == "major":
+            intervals = [0, 4, 7]
+        elif self.filter_quality == "minor":
+            intervals = [0, 3, 7]
+        elif self.filter_quality == "augmented":
+            intervals = [0, 4, 8]
+        elif self.filter_quality == "diminished":
+            intervals = [0, 3, 6]
+        else:
+            intervals = [0, 4, 7]   # fallback
 
+        # Start with root, third, fifth
+        root = self.filter_pivot_note
+        chord_notes = {root}
+        if len(intervals) >= 2:
+            chord_notes.add(root + intervals[1])   # third
+        if len(intervals) >= 3:
+            chord_notes.add(root + intervals[2])   # fifth
+
+        # Add extensions (6,8,10,12 semitones above root)
+        for ext in self.extensions:
+            chord_notes.add(root + ext)
+
+        # Remove omitted degrees (2 = third, 4 = fifth)
+        if 2 in self.omissions:
+            chord_notes.discard(root + intervals[1])   # third
+        if 4 in self.omissions:
+            chord_notes.discard(root + intervals[2])   # fifth
+
+        # Generate all octaves
         legal = set()
-        for octave in range(-1, 10):
-            for d in chord_degrees:
-                octave_shift, idx = divmod(d, 7)
-                interval = self.effective_intervals[idx] + 12 * octave_shift
-                note = self.root_note + interval + (octave - 4) * 12
-                if 0 <= note <= 127:
-                    legal.add(note)
+        for octave in range(-10, 10):
+            for note in chord_notes:
+                shifted = note + octave * 12
+                if 0 <= shifted <= 127:
+                    legal.add(shifted)
         return legal
+
 
     # --- Helper for voices (cursor note is external) ---
     def get_pitch_at_offset(self, cursor_note, degree_offset, octave_offset=0):

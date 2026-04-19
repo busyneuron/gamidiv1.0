@@ -22,12 +22,14 @@ class MidiManager:
             msg = mido.Message('note_on', note=note, velocity=velocity, channel=channel)
             self.output_port.send(msg)
         bus.emit("NOTE_ON_SENT", note=note, velocity=velocity, channel=channel)
+        
 
     def send_note_off(self, note, channel=0):
         if self.output_port:
             msg = mido.Message('note_off', note=note, velocity=0, channel=channel)
             self.output_port.send(msg)
         bus.emit("NOTE_OFF_SENT", note=note, channel=channel)
+        
 
     def process_incoming(self):
         """Call this regularly in the main loop."""
@@ -45,7 +47,8 @@ class MidiManager:
             elif msg.type == "songpos":
                 bus.emit("SONG_POSITION", pos=msg.pos)
             else:
-                print(f"[MIDI IN] {msg.type} (data: {msg.dict() if hasattr(msg, 'dict') else msg})")
+                pass
+                #print(f"[MIDI IN] {msg.type} (data: {msg.dict() if hasattr(msg, 'dict') else msg})")
 
     def close(self):
         self.running = False

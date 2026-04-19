@@ -9,6 +9,7 @@ class VoiceManager:
         self.chord = False
         self.cursor_note = 60
         self.theory = theory_engine
+        self.active_note_counts = {}   # note -> count of voices playing it
 
         bus.on("VOICE_NOTE_ON", self._on_voice_note_on)
         bus.on("VOICE_NOTE_OFF", self._on_voice_note_off)
@@ -30,6 +31,10 @@ class VoiceManager:
 
     def remove_voice(self, voice_id):
         if voice_id in self.voices:
+            # Before removing, release any notes this voice is playing
+            voice = self.voices[voice_id]
+            if voice.last_played_note is not None:
+                self._release_note(voice, voice.last_played_note, voice.channel)
             del self.voices[voice_id]
             bus.emit("VOICE_REMOVED", voice_id=voice_id)
 
@@ -49,29 +54,46 @@ class VoiceManager:
         for voice in self.voices.values():
             voice.release_note()
 
+    def _release_note(self, voice, note, channel):
+        """Decrement counter and send note off if count reaches zero."""
+        count = self.active_note_counts.get(note, 0)
+        if count <= 0:
+            return
+        new_count = count - 1
+        if new_count <= 0:
+            self.active_note_counts.pop(note, None)
+            bus.emit("SEND_NOTE_OFF", note=note, channel=channel)
+        else:
+            self.active_note_counts[note] = new_count
+
+    def _play_note(self, voice, note, velocity, channel):
+        """Increment counter and send note on if count goes from 0 to 1."""
+        count = self.active_note_counts.get(note, 0)
+        if count == 0:
+            bus.emit("SEND_NOTE_ON", note=note, velocity=velocity, channel=channel)
+        self.active_note_counts[note] = count + 1
+
     def _on_cursor_moved(self, new_note):
         self.cursor_note = new_note
-        # Only sustain voices need to know about cursor moves
         for voice in self.voices.values():
             if voice.mode == "sustain":
                 voice.on_cursor_moved_sustain(new_note)
 
     def _on_master_tick(self, tick):
         for voice in self.voices.values():
-            if voice.mode == "sustain":
-                # Sustain mode: only tick if gate is on, otherwise release
+            if voice.mode == "ostinato":
+                voice.on_master_tick(tick, self.cursor_note)
+            elif voice.mode == "sustain":
                 if self.gate:
                     voice.on_master_tick(tick, self.cursor_note)
                 else:
                     if voice.sustain_current_note is not None:
                         voice.release_note()
-            else:  # ostinato
-                # Ostinato always ticks; gate is enforced in _on_voice_note_on
-                voice.on_master_tick(tick, self.cursor_note)
 
     def _on_song_position(self, pos):
         for voice in self.voices.values():
             voice.reset_for_song_position()
+        self.active_note_counts.clear()   # also clear counter on jump
 
     def _should_play_voice(self, voice):
         if not self.gate:
@@ -85,19 +107,22 @@ class VoiceManager:
         if not voice:
             return
         if self._should_play_voice(voice):
-            bus.emit("SEND_NOTE_ON", note=note, velocity=velocity, channel=channel)
+            self._play_note(voice, note, velocity, channel)
         else:
+            # Voice is not allowed to play, so release it internally
             voice.release_note()
 
     def _on_voice_note_off(self, voice_id, note, channel):
         voice = self.voices.get(voice_id)
         if not voice:
             return
-        bus.emit("SEND_NOTE_OFF", note=note, channel=channel)
+        self._release_note(voice, note, channel)
 
     def panic(self):
         for voice in self.voices.values():
             voice.panic()
+        self.active_note_counts.clear()
+        bus.emit("SEND_ALL_NOTES_OFF")   # optional, but good practice
     
     def jump_cursor_to_voice(self, voice_id):
         voice = self.voices.get(voice_id)
