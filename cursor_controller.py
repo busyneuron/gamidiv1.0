@@ -42,12 +42,6 @@ class CursorController:
             self._update_reachable_notes()
 
     def _on_scale_changed(self, legal_notes, root_note, mode):
-        if not legal_notes:
-            return
-        # Find the note in legal_notes closest to current cursor
-        closest = min(legal_notes, key=lambda note: abs(note - self._cursor_note))
-        if closest != self._cursor_note:
-            self.cursor_note = closest
         # Scale change may affect reachable notes because get_next_note depends on legal notes
         self._update_reachable_notes()
 

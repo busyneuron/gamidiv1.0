@@ -106,9 +106,7 @@ class VoiceEditor:
             ("eighth", "normal"),
             ("eighth rest", "normal"),
             ("eighth", "normal"),
-        ],
-        "half":[
-            ("half", "tenuto")
+            
         ]
     }
 

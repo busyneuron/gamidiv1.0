@@ -91,19 +91,8 @@ class ActionManager:
             preset_name = action_id.replace("set_motif_preset_", "")
             self.voice_editor.set_selected_voice_motif(preset_name)
         elif action_id == "set_lead":
-            self.voice_editor.jump_cursor_to_selected_voice() 
-
-        # Filter quality (augmented/diminished) - add after mode setting or before voice editing
-        elif action_id == "set_filter_quality_major" and value:
-            self.theory.set_filter_quality("major")
-        elif action_id == "set_filter_quality_minor" and value:
-            self.theory.set_filter_quality("minor")
-        elif action_id == "set_filter_quality_augmented" and value:
-            self.theory.set_filter_quality("augmented")
-        elif action_id == "set_filter_quality_diminished" and value:
-            self.theory.set_filter_quality("diminished")
-
-
+            self.voice_editor.jump_cursor_to_selected_voice()
+        
                 # ----- Voice mode and sustain quantization -----
         elif action_id == "set_voice_mode_ostinato" and value and self.voice_editor:
             self.voice_editor.set_selected_voice_mode("ostinato")
