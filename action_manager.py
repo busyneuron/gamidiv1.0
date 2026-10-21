@@ -11,11 +11,15 @@ class ActionManager:
         bus.on("INVOKE_ACTION", self._on_action)
 
     def _on_action(self, action_id, value):
-        # Cursor movement
-        if action_id == "move_cursor_up" and value:
-            self.cursor.move_up()
-        elif action_id == "move_cursor_down" and value:
-            self.cursor.move_down()
+        # Cursor movement — routed through set_held() so both modes share one path
+        if action_id == "move_cursor_up":
+            self.cursor.set_held("up", value)
+        elif action_id == "move_cursor_down":
+            self.cursor.set_held("down", value)
+        elif action_id == "set_cursor_mode_press" and value:
+            self.cursor.set_cursor_mode(False)
+        elif action_id == "set_cursor_mode_continuous" and value:
+            self.cursor.set_cursor_mode(True)
 
         # Toggle actions
         elif action_id == "toggle_gate" and value:

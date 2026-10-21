@@ -8,9 +8,18 @@ class CursorController:
         self.jump_interval = 1
         self.active_jump_intervals = set()
         self._reachable_notes = None
+
+        # --- Cursor movement modes ---
+        self._continuous_mode = False       # False = PRESS, True = HIT
+        self._held_up = False
+        self._held_down = False
+        self._note_was_sent_last_tick = False
+
         bus.on("ACTION_STATE_CHANGED", self._on_action_state_changed)
         bus.on("CURSOR_MOVED", self._on_cursor_moved)
         bus.on("SCALE_CHANGED", self._on_scale_changed)
+        bus.on("MASTER_TICK", self._on_master_tick)
+        bus.on("NOTE_ON_SENT", self._on_note_on_sent)
 
     @property
     def cursor_note(self):
@@ -36,13 +45,11 @@ class CursorController:
                 self._update_reachable_notes()
 
     def _on_cursor_moved(self, new_note):
-        # Already handled by setter; this is for external changes
         if new_note != self._cursor_note:
             self._cursor_note = new_note
             self._update_reachable_notes()
 
     def _on_scale_changed(self, legal_notes, root_note, mode):
-        # Scale change may affect reachable notes because get_next_note depends on legal notes
         self._update_reachable_notes()
 
     def _update_reachable_notes(self):
@@ -50,7 +57,6 @@ class CursorController:
             self._reachable_notes = None
         else:
             reachable = set()
-            # Upward
             note = self._cursor_note
             while True:
                 next_note = self.theory.get_next_note(note, 1, self.jump_interval, chromatic=False)
@@ -58,7 +64,6 @@ class CursorController:
                     break
                 note = next_note
                 reachable.add(note)
-            # Downward
             note = self._cursor_note
             while True:
                 next_note = self.theory.get_next_note(note, -1, self.jump_interval, chromatic=False)
@@ -79,3 +84,45 @@ class CursorController:
         new_note = self.theory.get_next_note(self._cursor_note, -1, self.jump_interval, chromatic=False)
         if new_note != self._cursor_note:
             self.cursor_note = new_note
+
+    # --- Cursor movement mode (PRESS vs HIT) ---
+    def set_cursor_mode(self, continuous: bool):
+        """Switch between PRESS (one move per press) and HIT (one move per note)."""
+        if continuous == self._continuous_mode:
+            return
+        self._continuous_mode = continuous
+        self._held_up = self._held_down = False
+        self._note_was_sent_last_tick = False
+        label = "HIT" if continuous else "PRESS"
+        bus.emit("ADD_LOG", text=f"Cursor mode: {label}", color=(200, 200, 100))
+
+    def is_continuous_mode(self) -> bool:
+        return self._continuous_mode
+
+    def set_held(self, direction: str, held: bool):
+        """Called on button press/release. In PRESS mode, press triggers immediate move."""
+        if direction == "up":
+            self._held_up = held
+        elif direction == "down":
+            self._held_down = held
+        if not self._continuous_mode and held:
+            if direction == "up":
+                self.move_up()
+            elif direction == "down":
+                self.move_down()
+
+    def _on_note_on_sent(self, note, velocity, channel):
+        if self._continuous_mode:
+            self._note_was_sent_last_tick = True
+
+    def _on_master_tick(self, tick):
+        if not self._continuous_mode:
+            self._note_was_sent_last_tick = False
+            return
+        if not self._note_was_sent_last_tick:
+            return
+        self._note_was_sent_last_tick = False
+        if self._held_up and not self._held_down:
+            self.move_up()
+        elif self._held_down and not self._held_up:
+            self.move_down()

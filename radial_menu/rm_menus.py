@@ -1,6 +1,15 @@
 # radial_menu/rm_menus.py
 from .rm_models import Menu, Gate, GateType
 
+
+cursor_menu = Menu(
+    name="cursor",
+    gates={
+        "N": Gate(label="PRESS", color=(150, 200, 150), action_id="set_cursor_mode_press"),
+        "S": Gate(label="HIT",   color=(200, 150, 200), action_id="set_cursor_mode_continuous"),
+    }
+)
+
 # Modes submenu
 modes_menu = Menu(
     name="modes",
@@ -96,5 +105,6 @@ root_menu = Menu(
         "NW": Gate(label="ADD", color=(255,180,50), sub_menu=add_voice_menu),
         "NE": Gate(label="VOICES", color=(200,100,100), sub_menu="voices"),
         "W": Gate(label="EDIT", color=(200,200,100), sub_menu=edit_voice_menu),   
+        "SE": Gate(label="CURSOR", color=(150,200,150), sub_menu=cursor_menu)
     }
 )
