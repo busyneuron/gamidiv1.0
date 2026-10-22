@@ -115,7 +115,7 @@ class CursorController:
         if self._continuous_mode:
             self._note_was_sent_last_tick = True
 
-    def _on_master_tick(self, tick):
+    def _on_master_tick(self, tick, bar=0, tick_in_bar=0, **kwargs):
         if not self._continuous_mode:
             self._note_was_sent_last_tick = False
             return

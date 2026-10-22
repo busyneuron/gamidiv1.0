@@ -2,12 +2,15 @@
 from event_bus import bus
 
 class ActionManager:
-    def __init__(self, cursor_controller, voice_manager, theory_engine, voice_editor=None):
+    def __init__(self, cursor_controller, voice_manager, theory_engine,
+                 voice_editor=None, recorder=None, sequencer=None):
         self.cursor = cursor_controller
         self.vm = voice_manager
         self.theory = theory_engine
         self.voice_editor = voice_editor
+        self.sequencer = sequencer
         self.momentary_actions = {"gate", "chord"}
+
         bus.on("INVOKE_ACTION", self._on_action)
 
     def _on_action(self, action_id, value):
@@ -21,6 +24,19 @@ class ActionManager:
         elif action_id == "set_cursor_mode_continuous" and value:
             self.cursor.set_cursor_mode(True)
 
+
+        # Step Sequencer
+        elif action_id == "seq_stop" and value:
+            if self.sequencer: self.sequencer.stop_recording()
+        elif action_id == "seq_rec_1" and value:
+            if self.sequencer: self.sequencer.start_recording(1.0)
+        elif action_id == "seq_rec_half" and value:
+            if self.sequencer: self.sequencer.start_recording(0.5)
+        elif action_id == "seq_rec_quarter" and value:
+            if self.sequencer: self.sequencer.start_recording(0.25)
+        elif action_id == "seq_clear" and value:
+            if self.sequencer: self.sequencer.clear()
+            
         # Toggle actions
         elif action_id == "toggle_gate" and value:
             self.vm.set_gate(not self.vm.gate)

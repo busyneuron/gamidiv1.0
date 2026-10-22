@@ -25,6 +25,7 @@ from ui_state import UIState
 from interface import GamidiInterface
 from ui_components.scale_hud_controller import ScaleHUDController
 from ui_components.scale_hud_state import ScaleHUDState
+from step_sequencer import StepSequencer
 
 def main():
     os.environ['SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS'] = '1'
@@ -53,6 +54,12 @@ def main():
 
     # ---- Voice Editor (new) ----
     voice_editor = VoiceEditor(vm, theory)
+
+    step_sequencer = StepSequencer(voice_editor, metronome)
+
+    action_mgr = ActionManager(cursor_ctrl, vm, theory,
+                               voice_editor=voice_editor,
+                               sequencer=step_sequencer)
 
     # ---- Dynamic Menu Provider (new) ----
     menu_provider = DynamicMenuProvider(voice_manager=vm, theory_engine=theory)
@@ -93,7 +100,8 @@ def main():
     ui_state = UIState(
         keyboard=keyboard_ctrl.get_state(),
         piano_roll=piano_roll_ctrl.get_state(),
-        scale_hud=scale_hud_ctrl.get_state()
+        scale_hud=scale_hud_ctrl.get_state(),
+        sequencer=step_sequencer.state
     )
 
     # ---- Main Loop ----

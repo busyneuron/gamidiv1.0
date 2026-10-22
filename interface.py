@@ -13,6 +13,7 @@ from circle_of_fifths.chromatic_circle import ChromaticCircle
 from circle_of_fifths.degree_circle import DegreeCircle
 from event_bus import bus
 from ui_components.extensions_display import ExtensionsDisplay
+from ui_components.sequencer_view import SequencerView
 
 
 class GamidiInterface:
@@ -22,10 +23,13 @@ class GamidiInterface:
         self.grid = Grid(self.win_w)
         self.theme = Theme().hue_shift(10)
         self.theory = theory_engine
+        self.sequencer_view = SequencerView(self)
 
         self.layer_piano = pygame.Surface((736, 736), pygame.SRCALPHA)
         self.layer_plates = pygame.Surface((736, 736), pygame.SRCALPHA)
         self.layer_content = pygame.Surface((736, 736), pygame.SRCALPHA)
+
+        
 
         self.grating_asset = self._load_asset("assets/grating.png", (736, 736))
         self.plates_asset = self._load_asset("assets/plates.png", (736, 736))
@@ -103,6 +107,11 @@ class GamidiInterface:
         self.layer_piano.fill((0, 0, 0, 0))
         self.layer_plates.fill((0, 0, 0, 0))
         self.layer_content.fill((0, 0, 0, 0))
+
+
+        # Step Sequencer (Top Left)
+        rect_seq = self.grid.get_rect(0, 0, 8, 2)
+        self.sequencer_view.draw(self.layer_content, rect_seq, state.sequencer)
 
         # Piano roll
         rect_piano = self.grid.get_rect(0, 0, 16, 11)

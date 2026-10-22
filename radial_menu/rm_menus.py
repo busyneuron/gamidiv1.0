@@ -94,6 +94,17 @@ edit_voice_menu = Menu(
     }
 )
 
+record_menu = Menu(
+    name="record",
+    gates={
+        "N":  Gate(label="STOP", color=(255, 100, 100), action_id="seq_stop"),
+        "NE": Gate(label="1 BAR", color=(100, 200, 100), action_id="seq_rec_1"),
+        "E":  Gate(label="1/2", color=(100, 200, 100), action_id="seq_rec_half"),
+        "SE": Gate(label="1/4", color=(100, 200, 100), action_id="seq_rec_quarter"),
+        "S":  Gate(label="CLEAR", color=(200, 100, 100), action_id="seq_clear"),
+    }
+)
+
 # Root menu with added EDIT gate
 root_menu = Menu(
     name="root",
@@ -105,6 +116,7 @@ root_menu = Menu(
         "NW": Gate(label="ADD", color=(255,180,50), sub_menu=add_voice_menu),
         "NE": Gate(label="VOICES", color=(200,100,100), sub_menu="voices"),
         "W": Gate(label="EDIT", color=(200,200,100), sub_menu=edit_voice_menu),   
-        "SE": Gate(label="CURSOR", color=(150,200,150), sub_menu=cursor_menu)
+        "SE": Gate(label="CURSOR", color=(150,200,150), sub_menu=cursor_menu),
+        "SW": Gate(label="REC", color=(255,100,100), sub_menu=record_menu)
     }
 )

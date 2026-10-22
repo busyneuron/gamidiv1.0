@@ -55,23 +55,25 @@ class VoiceManager:
             voice.release_note()
 
     def _release_note(self, voice, note, channel):
-        """Decrement counter and send note off if count reaches zero."""
-        count = self.active_note_counts.get(note, 0)
+        """Decrement counter for (note, channel) and send OFF if count reaches zero."""
+        key = (note, channel)
+        count = self.active_note_counts.get(key, 0)
         if count <= 0:
             return
         new_count = count - 1
         if new_count <= 0:
-            self.active_note_counts.pop(note, None)
+            self.active_note_counts.pop(key, None)
             bus.emit("SEND_NOTE_OFF", note=note, channel=channel)
         else:
-            self.active_note_counts[note] = new_count
+            self.active_note_counts[key] = new_count
 
     def _play_note(self, voice, note, velocity, channel):
-        """Increment counter and send note on if count goes from 0 to 1."""
-        count = self.active_note_counts.get(note, 0)
+        """Increment counter for (note, channel) and send ON if count was zero."""
+        key = (note, channel)
+        count = self.active_note_counts.get(key, 0)
         if count == 0:
             bus.emit("SEND_NOTE_ON", note=note, velocity=velocity, channel=channel)
-        self.active_note_counts[note] = count + 1
+        self.active_note_counts[key] = count + 1
 
     def _on_cursor_moved(self, new_note):
         self.cursor_note = new_note
@@ -79,7 +81,7 @@ class VoiceManager:
             if voice.mode == "sustain":
                 voice.on_cursor_moved_sustain(new_note)
 
-    def _on_master_tick(self, tick):
+    def _on_master_tick(self, tick, bar=0, tick_in_bar=0, **kwargs):
         for voice in self.voices.values():
             if voice.mode == "ostinato":
                 voice.on_master_tick(tick, self.cursor_note)
