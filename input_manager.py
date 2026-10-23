@@ -141,7 +141,8 @@ class InputManager:
 
     def _get_axis(self, axis):
         if self.mode == "sdl" and self.controller:
-            return self._apply_deadzone(self.controller.get_axis(axis))
+            # SDL controller axes are raw int16 (-32768..32767); normalize to -1..1
+            return self._apply_deadzone(self.controller.get_axis(axis) / 32768.0)
         if self.mode == "raw" and self.joy:
             return self._apply_deadzone(self.joy.get_axis(axis))
         return 0.0
