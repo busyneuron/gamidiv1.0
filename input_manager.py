@@ -102,7 +102,10 @@ class InputManager:
 
     def _controller_name(self):
         if self.mode == "sdl" and self.controller:
-            return self.controller.get_name()
+            try:
+                return self.controller.as_joystick().get_name()
+            except Exception:
+                return "SDL controller"
         if self.mode == "raw" and self.joy:
             return self.joy.get_name()
         return "keyboard fallback"
@@ -123,15 +126,16 @@ class InputManager:
             for i in range(self.num_buttons):
                 if self.joy.get_button(i):
                     pressed.add(self.raw_button_map.get(i, i) if self.raw_button_map else i)
-            hat = self.joy.get_hat(0)
-            if hat[0] == -1:
-                pressed.add(12)
-            elif hat[0] == 1:
-                pressed.add(13)
-            if hat[1] == 1:
-                pressed.add(14)
-            elif hat[1] == -1:
-                pressed.add(15)
+            if self.joy.get_numhats() > 0:
+                hat = self.joy.get_hat(0)
+                if hat[0] == -1:
+                    pressed.add(12)
+                elif hat[0] == 1:
+                    pressed.add(13)
+                if hat[1] == 1:
+                    pressed.add(14)
+                elif hat[1] == -1:
+                    pressed.add(15)
 
         return pressed
 

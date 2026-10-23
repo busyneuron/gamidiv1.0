@@ -53,7 +53,11 @@ def main():
         print(f"  count={ccount}")
         for i in range(ccount):
             c = sdl2controller.Controller(i)
-            print(f"  [{i}] {c.get_name()}")
+            try:
+                name = c.as_joystick().get_name()
+            except Exception:
+                name = "SDL controller"
+            print(f"  [{i}] {name}")
         if ccount == 0:
             print("  (ninguno)")
     except ImportError:
