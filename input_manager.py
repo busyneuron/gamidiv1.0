@@ -121,11 +121,21 @@ class InputManager:
             for raw, logical in SDL_BUTTON_MAP.items():
                 if self.controller.get_button(raw):
                     pressed.add(logical)
+            # Triggers are axes on gamepads: map them to momentary logical buttons
+            # R2 -> gate + chord (play all voices), L2 -> chord (layering)
+            if self.controller.get_axis(pygame.CONTROLLER_AXIS_TRIGGERRIGHT) > 16384:
+                pressed.update((5, 7))
+            if self.controller.get_axis(pygame.CONTROLLER_AXIS_TRIGGERLEFT) > 16384:
+                pressed.add(7)
 
         elif self.mode == "raw" and self.joy:
             for i in range(self.num_buttons):
                 if self.joy.get_button(i):
                     pressed.add(self.raw_button_map.get(i, i) if self.raw_button_map else i)
+            if self.joy.get_axis(5) > 0.5:   # R2
+                pressed.update((5, 7))
+            if self.joy.get_axis(4) > 0.5:   # L2
+                pressed.add(7)
             if self.joy.get_numhats() > 0:
                 hat = self.joy.get_hat(0)
                 if hat[0] == -1:
