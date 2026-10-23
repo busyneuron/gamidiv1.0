@@ -20,8 +20,8 @@ SDL_BUTTON_MAP = {
     pygame.CONTROLLER_BUTTON_RIGHTSHOULDER: 5,
     pygame.CONTROLLER_BUTTON_BACK: 6,
     pygame.CONTROLLER_BUTTON_START: 7,
-    pygame.CONTROLLER_BUTTON_LEFTSTICK: 8,
-    pygame.CONTROLLER_BUTTON_RIGHTSTICK: 9,
+    pygame.CONTROLLER_BUTTON_LEFTSTICK: 10,   # L3 -> cycle focus (radial <-> circle)
+    pygame.CONTROLLER_BUTTON_RIGHTSTICK: 8,   # R3 -> toggle circle mode
     pygame.CONTROLLER_BUTTON_DPAD_LEFT: 12,
     pygame.CONTROLLER_BUTTON_DPAD_RIGHT: 13,
     pygame.CONTROLLER_BUTTON_DPAD_UP: 14,
@@ -39,8 +39,8 @@ PS5_BUTTON_MAP = {
     10: 5,   # R1         -> RB
     4: 6,    # share      -> back
     6: 7,    # options    -> start
-    7: 8,    # L3
-    8: 9,    # R3
+    7: 10,   # L3         -> cycle focus (radial <-> circle)
+    8: 8,    # R3         -> toggle circle mode
     11: 14,  # dpad up
     12: 15,  # dpad down
     13: 12,  # dpad left
@@ -62,6 +62,8 @@ KEYBOARD_MAP = {
     pygame.K_z: 5,   # gate (also tap-record)
     pygame.K_x: 7,   # chord
     pygame.K_m: 6,
+    pygame.K_c: 10,  # cycle focus (radial <-> circle)
+    pygame.K_v: 8,   # toggle circle mode
 }
 
 

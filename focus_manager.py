@@ -23,6 +23,7 @@ class FocusManager:
         self.current_index = (self.current_index + 1) % len(self.modes)
         self.current_mode = self.modes[self.current_index]
         bus.emit("FOCUS_CHANGED", mode=self.current_mode.value)  # emit string value
+        bus.emit("ADD_LOG", text=f"Focus: {self.current_mode.value.upper()}", color=(150, 200, 255))
 
     def set_mode(self, mode: FocusMode):
         if mode in self.modes:
