@@ -23,6 +23,7 @@ class KeyboardController:
 
     def _on_note_off(self, note, channel):
         self.state.active_notes.discard(note)
+        self.state.note_release_time[note] = time.time()
 
     def _on_cursor_moved(self, new_note):
         self.current_note = new_note

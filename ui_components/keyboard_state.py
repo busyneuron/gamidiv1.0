@@ -9,6 +9,7 @@ class KeyboardState:
     active_notes: Set[int]
     root_note: int
     last_trigger_time: Dict[int, float] = field(default_factory=dict)
+    note_release_time: Dict[int, float] = field(default_factory=dict)
     reachable_notes: Optional[Set[int]] = None
 
     def __post_init__(self):

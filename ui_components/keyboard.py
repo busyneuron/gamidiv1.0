@@ -75,6 +75,16 @@ class Keyboard:
         self.cursor_dot_radius = 4
         self.cursor_dot_offset = 8              # pixels above the key
 
+        # Note letter feedback (floats above played keys)
+        self.note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        self.letter_font = self.p.theme.fonts.get_mono_bold(14)
+        self.letter_color = (255, 255, 255)
+        self.letter_outline_color = (0, 0, 0)
+        self.letter_base_offset = 16       # pixels above the key top at rest
+        self.letter_rise_amount = 12       # how far the letter rises
+        self.letter_rise_duration = 0.10   # seconds to rise
+        self.letter_fall_duration = 0.22   # seconds to fall
+
     def _load_masks(self):
         if not self.mask_enabled:
             return
@@ -122,7 +132,41 @@ class Keyboard:
             if self._is_black(note):
                 self._draw_key(surface, note, start_x, key_y, black_w, black_h,
                                True, state, now)
-    
+
+        # Note letter feedback
+        self._draw_note_letters(surface, state, start_x, key_y, white_w)
+
+    def _draw_note_letters(self, surface, state, start_x, key_y, white_w):
+        """Float the note letter above each played key: rises on press and
+        falls back on release, both interpolated."""
+        now = time.time()
+        notes = set(state.active_notes)
+        notes.update(state.note_release_time.keys())
+
+        for note in notes:
+            if note in state.active_notes:
+                elapsed = now - state.last_trigger_time.get(note, now)
+                progress = min(1.0, elapsed / self.letter_rise_duration)
+            else:
+                elapsed = now - state.note_release_time[note]
+                progress = 1.0 - elapsed / self.letter_fall_duration
+                if progress <= 0.0:
+                    continue
+
+            x = start_x + self.get_x_pos(note, white_w)
+            actual_w = max(2, int(white_w * self.width_scale))
+            logical_w = white_w if not self._is_black(note) else int(white_w * 0.75)
+            offset_x = x + (logical_w - actual_w) // 2
+            cx = offset_x + actual_w // 2
+            cy = int(key_y - self.letter_base_offset - progress * self.letter_rise_amount)
+
+            name = self.note_names[note % 12]
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                ol = self.letter_font.render(name, True, self.letter_outline_color)
+                surface.blit(ol, ol.get_rect(center=(cx + dx, cy + dy)))
+            txt = self.letter_font.render(name, True, self.letter_color)
+            surface.blit(txt, txt.get_rect(center=(cx, cy)))
+
     def _draw_key(self, surface, note, start_x, y, logical_w, h, is_black, state, now):
         x = start_x + self.get_x_pos(note, 736 // 75)
         actual_w = max(2, int((736 // 75) * self.width_scale))
