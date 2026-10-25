@@ -10,8 +10,6 @@ class KeyboardState:
     root_note: int
     last_trigger_time: Dict[int, float] = field(default_factory=dict)
     reachable_notes: Optional[Set[int]] = None
-    active_note_channels: Dict[int, int] = field(default_factory=dict)
-    selected_channels: Set[int] = field(default_factory=set)
 
     def __post_init__(self):
         self.root_pc = self.root_note % 12

@@ -151,9 +151,13 @@ class ActionManager:
         elif action_id == "set_voice_mode_canon" and value and self.voice_editor:
             self.voice_editor.set_selected_voice_mode("canon")
 
-        # ----- Radial menu navigation -----
-        elif action_id == "radial_menu_back" and value:
-            bus.emit("RADIAL_MENU_BACK")
+        # ----- Shift modifier (L2) -----
+        elif action_id == "shift":
+            bus.emit("SHIFT_HELD", value=value)
+
+        # ----- Extension accidental cycle (R3) -----
+        elif action_id == "cycle_extension_accidental" and value:
+            bus.emit("CYCLE_EXTENSION_ACCIDENTAL")
         
         elif action_id.startswith("jump_interval_") and value is not None:
             bus.emit("ACTION_STATE_CHANGED", action_id=action_id, active=value)

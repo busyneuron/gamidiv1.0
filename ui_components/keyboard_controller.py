@@ -16,19 +16,13 @@ class KeyboardController:
         bus.on("SCALE_CHANGED", self._on_scale_changed)
         bus.on("ROOT_CHANGED", self._on_root_changed)
         bus.on("REACHABLE_NOTES_CHANGED", self._on_reachable_notes_changed)
-        bus.on("VOICE_SELECTION_CHANGED", self._on_voice_selection)
-
-    def _on_voice_selection(self, selected_ids=None, selected_channels=None, **kwargs):
-        self.state.selected_channels = set(selected_channels or ())
 
     def _on_note_on(self, note, velocity, channel):
         self.state.active_notes.add(note)
-        self.state.active_note_channels[note] = channel
         self.state.last_trigger_time[note] = time.time()
 
     def _on_note_off(self, note, channel):
         self.state.active_notes.discard(note)
-        self.state.active_note_channels.pop(note, None)
 
     def _on_cursor_moved(self, new_note):
         self.current_note = new_note

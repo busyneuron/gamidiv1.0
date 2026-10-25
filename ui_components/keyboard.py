@@ -75,20 +75,6 @@ class Keyboard:
         self.cursor_dot_radius = 4
         self.cursor_dot_offset = 8              # pixels above the key
 
-        # Per-channel (voice) coloring
-        self.channel_colors = [
-            parent.theme.accent,
-            parent.theme.complementary,
-            parent.theme.color2,
-            parent.theme.color3,
-            parent.theme.secondary,
-            (255, 180, 60),
-            (120, 200, 255),
-            (200, 120, 255),
-        ]
-        self.selected_outline_color = (255, 255, 255)
-        self.selected_outline_width = 3
-
     def _load_masks(self):
         if not self.mask_enabled:
             return
@@ -188,12 +174,14 @@ class Keyboard:
         fill_color = (*base_fill, alpha_fill)
         outline_color = (*base_outline, alpha_out)
         
-        # Override for active notes: color by channel (voice)
+        # Override for active notes (full bright)
         if is_active:
-            channel = state.active_note_channels.get(note, 0)
-            channel_color = self.channel_colors[channel % len(self.channel_colors)]
-            fill_color = (*channel_color, 255)
-            outline_color = (*channel_color, 255)
+            if is_black:
+                fill_color = (*self.black_active_fill, self.black_alpha_fill_active)
+                outline_color = (*self.black_active_outline, self.black_alpha_out_active)
+            else:
+                fill_color = (*self.white_active_fill, self.white_alpha_fill_active)
+                outline_color = (*self.white_active_outline, self.white_alpha_out_active)
         
         # Pulse effect (from last trigger time)
         if note in state.last_trigger_time:
@@ -218,11 +206,6 @@ class Keyboard:
         # Draw outline
         if self.outline_thickness > 0 and outline_color[3] > 0:
             pygame.draw.rect(surface, outline_color, key_rect, width=self.outline_thickness, border_radius=radius)
-
-        # Selected-voice outline (thicker, distinct)
-        if is_active and state.active_note_channels.get(note, 0) in state.selected_channels:
-            pygame.draw.rect(surface, (*self.selected_outline_color, 255), key_rect,
-                             width=self.selected_outline_width, border_radius=radius)
         
         # Root dot
         if note % 12 == root_pc:
