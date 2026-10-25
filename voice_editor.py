@@ -66,7 +66,8 @@ class VoiceEditor:
         """Create a default voice (degree 0, quarter note) if none exist."""
         from voice import Voice
         default = Voice(voice_id=0, event_bus=bus, theory_engine=self.theory,
-                        degree_offset=0, octave_offset=0, channel=0)
+                        degree_offset=0, octave_offset=0, channel=0,
+                        melody_history=self.vm.melody_history)
         default.set_motif([("quarter", "normal")])
         self.vm.add_voice(default)
         # Optionally select it
@@ -125,7 +126,7 @@ class VoiceEditor:
         # --- Mode and quantization for selected voices ---
     def set_selected_voice_mode(self, mode):
         """Set mode ('ostinato' or 'sustain') for all selected voices."""
-        if mode not in ("ostinato", "sustain"):
+        if mode not in ("ostinato", "sustain", "canon"):
             return
         for vid in self._selected_ids:
             voice = self.vm.voices.get(vid)
@@ -141,6 +142,38 @@ class VoiceEditor:
                 voice.set_sustain_quantization(ticks)
         bus.emit("ADD_LOG", text=f"Set sustain quantization to {ticks} ticks for {len(self._selected_ids)} voice(s)", color=(100,200,200))
     
+    # --- Canon voices (countermelodic echo) ---
+    def add_canon_voice(self, delay_ticks, degree_offset=0, octave_offset=0):
+        """Add a canon voice that echoes the lead melody after `delay_ticks`."""
+        return self.vm.add_canon_voice(delay_ticks, degree_offset, octave_offset)
+
+    def adjust_selected_canon_delay(self, delta_ticks):
+        """Shift the delay of all selected canon voices by `delta_ticks`."""
+        for vid in self._selected_ids:
+            voice = self.vm.voices.get(vid)
+            if voice and voice.mode == "canon":
+                voice.set_canon_delay(voice.canon_delay_ticks + delta_ticks)
+                bus.emit("ADD_LOG", text=f"Canon delay: {voice.canon_delay_ticks} ticks",
+                         color=(100, 200, 200))
+
+    def adjust_selected_canon_degree(self, delta_degrees):
+        """Shift the degree offset of all selected canon voices by `delta_degrees`."""
+        for vid in self._selected_ids:
+            voice = self.vm.voices.get(vid)
+            if voice and voice.mode == "canon":
+                voice.set_canon_degree_offset(voice.canon_degree_offset + delta_degrees)
+                bus.emit("ADD_LOG", text=f"Canon degree: {voice.canon_degree_offset}",
+                         color=(100, 200, 200))
+
+    def adjust_selected_canon_octave(self, delta_octaves):
+        """Shift the octave offset of all selected canon voices by `delta_octaves`."""
+        for vid in self._selected_ids:
+            voice = self.vm.voices.get(vid)
+            if voice and voice.mode == "canon":
+                voice.set_canon_octave_offset(voice.canon_octave_offset + delta_octaves)
+                bus.emit("ADD_LOG", text=f"Canon octave: {voice.canon_octave_offset}",
+                         color=(100, 200, 200))
+
     def jump_cursor_to_selected_voice(self):
         if len(self._selected_ids) > 1:
             bus.emit("ADD_LOG", text=f"Only one voice selected can be the new lead", color=(100,200,200))

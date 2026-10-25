@@ -277,7 +277,10 @@ class TheoryEngine:
             idx = legal.index(cursor_note)
         except ValueError:
             idx = min(range(len(legal)), key=lambda i: abs(legal[i] - cursor_note))
-        target_idx = idx + degree_offset + octave_offset * len(legal)
+        # Notes per octave = distinct pitch classes in the current scale/chord.
+        # (Previously this used len(legal), which spans all octaves — a bug.)
+        per_octave = len({n % 12 for n in legal})
+        target_idx = idx + degree_offset + octave_offset * per_octave
         target_idx = max(0, min(target_idx, len(legal)-1))
         return legal[target_idx]
 

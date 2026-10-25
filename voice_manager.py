@@ -1,6 +1,10 @@
 # voice_manager.py
 from event_bus import bus
 from voice import Voice
+from melody_history import MelodyHistory
+
+LEAD_VOICE_ID = 0   # the voice whose melody canon voices echo
+
 
 class VoiceManager:
     def __init__(self, theory_engine=None):
@@ -10,6 +14,8 @@ class VoiceManager:
         self.cursor_note = 60
         self.theory = theory_engine
         self.active_note_counts = {}   # note -> count of voices playing it
+        self.melody_history = MelodyHistory()
+        self._current_tick = 0
 
         bus.on("VOICE_NOTE_ON", self._on_voice_note_on)
         bus.on("VOICE_NOTE_OFF", self._on_voice_note_off)
@@ -21,7 +27,8 @@ class VoiceManager:
 
     def create_initial_voice(self, theory):
         voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
-                    degree_offset=0, octave_offset=0, channel=0)
+                    degree_offset=0, octave_offset=0, channel=0,
+                    melody_history=self.melody_history)
         voice.set_motif([("quarter", "staccato"),("eighth", "normal"),("eighth", "normal")])
         self.add_voice(voice)
 
@@ -82,6 +89,7 @@ class VoiceManager:
                 voice.on_cursor_moved_sustain(new_note)
 
     def _on_master_tick(self, tick, bar=0, tick_in_bar=0, **kwargs):
+        self._current_tick = tick
         for voice in self.voices.values():
             if voice.mode == "ostinato":
                 voice.on_master_tick(tick, self.cursor_note)
@@ -91,11 +99,15 @@ class VoiceManager:
                 else:
                     if voice.sustain_current_note is not None:
                         voice.release_note()
+            elif voice.mode == "canon":
+                if self.gate:
+                    voice.on_master_tick(tick, self.cursor_note)
 
     def _on_song_position(self, pos):
         for voice in self.voices.values():
             voice.reset_for_song_position()
         self.active_note_counts.clear()   # also clear counter on jump
+        self.melody_history.clear()
 
     def _should_play_voice(self, voice):
         if not self.gate:
@@ -110,6 +122,8 @@ class VoiceManager:
             return
         if self._should_play_voice(voice):
             self._play_note(voice, note, velocity, channel)
+            if voice_id == LEAD_VOICE_ID:
+                self.melody_history.record(self._current_tick, "on", note)
         else:
             # Voice is not allowed to play, so release it internally
             voice.release_note()
@@ -119,11 +133,16 @@ class VoiceManager:
         if not voice:
             return
         self._release_note(voice, note, channel)
+        # Only record the lead's release while gated: during gate-off the lead's
+        # ostinato still emits spurious note-offs that have no matching note-on.
+        if voice_id == LEAD_VOICE_ID and self.gate:
+            self.melody_history.record(self._current_tick, "off", note)
 
     def panic(self):
         for voice in self.voices.values():
             voice.panic()
         self.active_note_counts.clear()
+        self.melody_history.clear()
         bus.emit("SEND_ALL_NOTES_OFF")   # optional, but good practice
     
     def jump_cursor_to_voice(self, voice_id):
@@ -168,11 +187,35 @@ class VoiceManager:
             theory_engine=self.theory,
             degree_offset=offset,
             octave_offset=0,
-            channel=0
+            channel=0,
+            melody_history=self.melody_history
         )
         new_voice.set_motif([("quarter", "normal")])
         self.add_voice(new_voice)
         return new_voice
+
+    def add_canon_voice(self, delay_ticks=96, degree_offset=0, octave_offset=0):
+        """Create a canon voice that echoes the lead melody after `delay_ticks`,
+        transposed by `degree_offset` scale degrees and `octave_offset` octaves."""
+        new_id = max(self.voices.keys(), default=-1) + 1
+        voice = Voice(
+            voice_id=new_id,
+            event_bus=bus,
+            theory_engine=self.theory,
+            degree_offset=0,
+            octave_offset=0,
+            channel=0,
+            melody_history=self.melody_history
+        )
+        voice.set_mode("canon")
+        voice.set_canon_delay(delay_ticks)
+        voice.set_canon_degree_offset(degree_offset)
+        voice.set_canon_octave_offset(octave_offset)
+        self.add_voice(voice)
+        bus.emit("ADD_LOG",
+                 text=f"Canon voice {new_id}: delay={delay_ticks}, deg={degree_offset}, oct={octave_offset}",
+                 color=(100, 200, 200))
+        return voice
 
     # Helper methods for mode/quantization
     def set_voice_mode(self, voice_id, mode):

@@ -24,6 +24,16 @@ modes_menu = Menu(
     }
 )
 
+canon_menu = Menu(
+    name="canon",
+    gates={
+        "N":  Gate(label="1/4",   color=(100,200,200), action_id="add_canon_q"),
+        "NE": Gate(label="1/2",   color=(100,200,200), action_id="add_canon_half"),
+        "E":  Gate(label="1 BAR", color=(100,200,200), action_id="add_canon_bar"),
+        "SE": Gate(label="2 BAR", color=(100,200,200), action_id="add_canon_2bar"),
+    }
+)
+
 add_voice_menu = Menu(
     name="intervals",
     gates={
@@ -34,6 +44,7 @@ add_voice_menu = Menu(
         "S":  Gate(label="6th", color=(255,100,100), action_id="add_voice_6th"),
         "SW": Gate(label="7th", color=(255,100,100), action_id="add_voice_7th"),
         "W":  Gate(label="8ve", color=(255,100,100), action_id="add_voice_8ve"),
+        "NW": Gate(label="CANON", color=(100,200,200), sub_menu=canon_menu),
     }
 )
 
@@ -58,24 +69,26 @@ scale_menu = Menu(
     }
 )
 
-# NEW: Motif presets submenu
-motif_presets_menu = Menu(
-    name="motifs",
-    gates={
-        "N":  Gate(label="QUARTER", color=(100,200,100), action_id="set_motif_preset_quarter"),
-        "NE": Gate(label="EIGHTH",  color=(100,200,100), action_id="set_motif_preset_eighth"),
-        "E":  Gate(label="GALLOP",  color=(100,200,100), action_id="set_motif_preset_gallop"),
-        "S":  Gate(label="SYNC",    color=(100,200,100), action_id="set_motif_preset_syncopated"),
-        "SW":  Gate(label="OFFB",    color=(100,200,100), action_id="set_motif_preset_offbeat"),
-    }
-)
-
 # Voice mode submenu
 voice_mode_menu = Menu(
     name="voice_mode",
     gates={
         "N": Gate(label="OST", color=(100,200,100), action_id="set_voice_mode_ostinato"),
         "S": Gate(label="SUS", color=(100,200,200), action_id="set_voice_mode_sustain"),
+        "E": Gate(label="CANON", color=(150,150,200), action_id="set_voice_mode_canon"),
+    }
+)
+
+# Canon parameter editing (delay / degree / octave)
+canon_edit_menu = Menu(
+    name="canon_edit",
+    gates={
+        "N":  Gate(label="DLY+", color=(100,200,200), action_id="canon_delay_up"),
+        "S":  Gate(label="DLY-", color=(100,200,200), action_id="canon_delay_down"),
+        "E":  Gate(label="DEG+", color=(150,150,200), action_id="canon_degree_up"),
+        "W":  Gate(label="DEG-", color=(150,150,200), action_id="canon_degree_down"),
+        "NE": Gate(label="OCT+", color=(150,150,200), action_id="canon_oct_up"),
+        "SW": Gate(label="OCT-", color=(150,150,200), action_id="canon_oct_down"),
     }
 )
 
@@ -88,9 +101,9 @@ edit_voice_menu = Menu(
         "E":  Gate(label="CLR ALL", color=(200,100,100), action_id="clear_all_voices"),
         "W":  Gate(label="CH +",    color=(100,200,200), action_id="channel_up"),
         "SW": Gate(label="CH -",    color=(100,200,200), action_id="channel_down"),
-        "S":  Gate(label="MOTIFS",  color=(100,200,100), sub_menu=motif_presets_menu),
-        "NW":  Gate(label="MODE",    color=(150,150,200), sub_menu=voice_mode_menu),
-        "SE":  Gate(label="SET LEAD",    color=(150,150,200), action_id="set_lead"),
+        "S":  Gate(label="CANON",   color=(100,200,200), sub_menu=canon_edit_menu),
+        "NW": Gate(label="MODE",    color=(150,150,200), sub_menu=voice_mode_menu),
+        "SE": Gate(label="SET LEAD", color=(150,150,200), action_id="set_lead"),
     }
 )
 

@@ -57,9 +57,7 @@ def main():
 
     step_sequencer = StepSequencer(voice_editor, metronome)
 
-    action_mgr = ActionManager(cursor_ctrl, vm, theory,
-                               voice_editor=voice_editor,
-                               sequencer=step_sequencer)
+    
 
     # ---- Dynamic Menu Provider (new) ----
     menu_provider = DynamicMenuProvider(voice_manager=vm, theory_engine=theory)
@@ -74,7 +72,7 @@ def main():
     axis_mapper = AxisMapper()
     action_mapper = ActionMapper()
     # ActionManager now receives voice_editor
-    action_mgr = ActionManager(cursor_ctrl, vm, theory, voice_editor=voice_editor)
+    action_mgr = ActionManager(cursor_ctrl, vm, theory, voice_editor=voice_editor, sequencer=step_sequencer)
 
     # ---- Focus Manager ----
     focus_mgr = FocusManager()

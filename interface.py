@@ -21,7 +21,7 @@ class GamidiInterface:
         self.screen = screen
         self.win_w, self.win_h = 736, 736
         self.grid = Grid(self.win_w)
-        self.theme = Theme().hue_shift(10)
+        self.theme = Theme().hue_shift(180)
         self.theory = theory_engine
         self.sequencer_view = SequencerView(self)
 

@@ -6,9 +6,11 @@ class ActionMapper:
         self.button_map = {
             14: "move_cursor_up",
             15: "move_cursor_down",
+            12: "seq_cursor_left",   # NEW
+            13: "seq_cursor_right",
             5: "gate",
             7: "chord",
-            6: "jump_to_voice2",
+            6: "radial_menu_back",
             4: "toggle_circle_ring",
             8: "toggle_circle_mode",
             

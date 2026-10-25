@@ -26,14 +26,18 @@ class ActionManager:
 
 
         # Step Sequencer
+        elif action_id == "seq_cursor_left" and value:
+            if self.sequencer: self.sequencer.move_cursor(-1)
+        elif action_id == "seq_cursor_right" and value:
+            if self.sequencer: self.sequencer.move_cursor(1)
         elif action_id == "seq_stop" and value:
-            if self.sequencer: self.sequencer.stop_recording()
+            if self.sequencer: self.sequencer.stop_editing()
         elif action_id == "seq_rec_1" and value:
-            if self.sequencer: self.sequencer.start_recording(1.0)
+            if self.sequencer: self.sequencer.start_editing(1.0)
         elif action_id == "seq_rec_half" and value:
-            if self.sequencer: self.sequencer.start_recording(0.5)
+            if self.sequencer: self.sequencer.start_editing(0.5)
         elif action_id == "seq_rec_quarter" and value:
-            if self.sequencer: self.sequencer.start_recording(0.25)
+            if self.sequencer: self.sequencer.start_editing(0.25)
         elif action_id == "seq_clear" and value:
             if self.sequencer: self.sequencer.clear()
             
@@ -122,6 +126,34 @@ class ActionManager:
             self.voice_editor.set_selected_voice_sustain_quantization(24)
         elif action_id == "set_sustain_quant_eighth" and value and self.voice_editor:
             self.voice_editor.set_selected_voice_sustain_quantization(12)
+
+        # ----- Canon (countermelodic echo of the lead) -----
+        elif action_id == "add_canon_q" and value and self.voice_editor:
+            self.voice_editor.add_canon_voice(24)
+        elif action_id == "add_canon_half" and value and self.voice_editor:
+            self.voice_editor.add_canon_voice(48)
+        elif action_id == "add_canon_bar" and value and self.voice_editor:
+            self.voice_editor.add_canon_voice(96)
+        elif action_id == "add_canon_2bar" and value and self.voice_editor:
+            self.voice_editor.add_canon_voice(192)
+        elif action_id == "canon_delay_up" and value and self.voice_editor:
+            self.voice_editor.adjust_selected_canon_delay(24)
+        elif action_id == "canon_delay_down" and value and self.voice_editor:
+            self.voice_editor.adjust_selected_canon_delay(-24)
+        elif action_id == "canon_degree_up" and value and self.voice_editor:
+            self.voice_editor.adjust_selected_canon_degree(1)
+        elif action_id == "canon_degree_down" and value and self.voice_editor:
+            self.voice_editor.adjust_selected_canon_degree(-1)
+        elif action_id == "canon_oct_up" and value and self.voice_editor:
+            self.voice_editor.adjust_selected_canon_octave(1)
+        elif action_id == "canon_oct_down" and value and self.voice_editor:
+            self.voice_editor.adjust_selected_canon_octave(-1)
+        elif action_id == "set_voice_mode_canon" and value and self.voice_editor:
+            self.voice_editor.set_selected_voice_mode("canon")
+
+        # ----- Radial menu navigation -----
+        elif action_id == "radial_menu_back" and value:
+            bus.emit("RADIAL_MENU_BACK")
         
         elif action_id.startswith("jump_interval_") and value is not None:
             bus.emit("ACTION_STATE_CHANGED", action_id=action_id, active=value)

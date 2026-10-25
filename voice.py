@@ -2,7 +2,7 @@
 from rhythm_engine import RhythmEngine
 
 class Voice:
-    def __init__(self, voice_id, event_bus, theory_engine, degree_offset=0, octave_offset=0, channel=0):
+    def __init__(self, voice_id, event_bus, theory_engine, degree_offset=0, octave_offset=0, channel=0, melody_history=None):
         self.id = voice_id
         self.bus = event_bus
         self.theory = theory_engine
@@ -11,7 +11,7 @@ class Voice:
         self.channel = channel
         self.muted = False
 
-        # Mode: "ostinato" or "sustain"
+        # Mode: "ostinato", "sustain", or "canon"
         self.mode = "ostinato"
 
         # Ostinato data
@@ -24,6 +24,12 @@ class Voice:
         self.sustain_current_note = None
         self.sustain_target_note = None
         self.sustain_quant_ticks = 12   # quarter note
+
+        # Canon data (countermelodic echo of the lead)
+        self.melody_history = melody_history
+        self.canon_delay_ticks = 24     # default: one quarter note
+        self.canon_degree_offset = 0    # transposition in scale degrees
+        self.canon_octave_offset = 0    # transposition in octaves
 
     def _update_cumulative(self):
         self.cumulative_starts = []
@@ -66,13 +72,13 @@ class Voice:
 
     # --- Mode management ---
     def set_mode(self, mode):
-        if mode not in ("ostinato", "sustain"):
+        if mode not in ("ostinato", "sustain", "canon"):
             return
         if self.mode == mode:
             return
 
         if mode == "sustain":
-            # Switching from ostinato to sustain
+            # Switching to sustain
             # Keep the currently playing note (if any) as sustain current note
             if self.last_played_note is not None:
                 self.sustain_current_note = self.last_played_note
@@ -81,8 +87,8 @@ class Voice:
                 self.sustain_current_note = None
                 self.sustain_target_note = None
         else:
-            # Switching from sustain to ostinato
-            # Release any sustain note
+            # Switching to ostinato or canon
+            # Release any current note
             self.release_note()
 
         self.mode = mode
@@ -94,7 +100,11 @@ class Voice:
     def set_motif(self, motif):
         self.release_note()
         self.motif = motif
-        self.compiled_motif = RhythmEngine.compile_motif(motif)
+        # Accept either human-readable string pairs or pre-compiled MotifStep list
+        if motif and hasattr(motif[0], 'total_ticks'):
+            self.compiled_motif = list(motif)
+        else:
+            self.compiled_motif = RhythmEngine.compile_motif(motif)
         self._update_cumulative()
 
     def _on_master_tick_ostinato(self, master_tick, cursor_note):
@@ -163,9 +173,37 @@ class Voice:
             self.sustain_current_note = self.sustain_target_note
             self.last_played_note = self.sustain_target_note
 
+    # --- Canon logic ---
+    def set_canon_delay(self, ticks):
+        self.canon_delay_ticks = max(1, int(ticks))
+
+    def set_canon_degree_offset(self, degrees):
+        self.canon_degree_offset = int(degrees)
+
+    def set_canon_octave_offset(self, octaves):
+        self.canon_octave_offset = int(octaves)
+
+    def _on_master_tick_canon(self, master_tick, cursor_note):
+        """Replay the lead melody, shifted by the canon delay and transposition."""
+        if self.muted or self.melody_history is None:
+            return
+        source_tick = master_tick - self.canon_delay_ticks
+        for kind, note in self.melody_history.events_at(source_tick):
+            pitch = self.theory.get_pitch_at_offset(
+                note, self.canon_degree_offset, self.canon_octave_offset
+            )
+            if kind == "on":
+                if 0 <= pitch <= 127 and pitch != self.last_played_note:
+                    self.play_note(pitch)
+            elif kind == "off":
+                if self.last_played_note is not None and self.last_played_note == pitch:
+                    self.release_note()
+
     # --- Main tick dispatch ---
     def on_master_tick(self, master_tick, cursor_note):
         if self.mode == "ostinato":
             self._on_master_tick_ostinato(master_tick, cursor_note)
-        else:
+        elif self.mode == "sustain":
             self._on_master_tick_sustain(master_tick, cursor_note)
+        elif self.mode == "canon":
+            self._on_master_tick_canon(master_tick, cursor_note)
