@@ -7,6 +7,7 @@ from rhythm_engine import MotifStep
 @dataclass
 class Step:
     active: bool = False
+    tie: bool = False   # tied to the previous step (same sustained note)
 
 @dataclass
 class SequencerState:
@@ -79,8 +80,18 @@ class StepSequencer:
         self.state.edit_step = (self.state.edit_step + direction) % self.state.total_steps
         # If holding gate, paint the steps as we move
         if self._paint_mode:
-            self.state.steps[self.state.edit_step].active = self._paint_value
+            self._paint_step(self.state.edit_step, self._paint_value)
             self._push_to_voice()
+
+    def _paint_step(self, idx, value):
+        """Set a step's on/off state (used while painting with gate held)."""
+        step = self.state.steps[idx]
+        if value:
+            step.active = True
+            step.tie = (idx > 0 and self.state.steps[idx - 1].active)
+        else:
+            step.active = False
+            step.tie = False
 
     def _on_master_tick(self, tick, **kwargs):
         elapsed = max(0, tick - self.state.start_tick)
@@ -89,14 +100,26 @@ class StepSequencer:
     def _on_button(self, button, value):
         if not self.state.is_editing or button != 5:
             return
-            
+
         if value: # Press
             self._paint_mode = True
-            self._paint_value = not self.state.steps[self.state.edit_step].active
-            self.state.steps[self.state.edit_step].active = self._paint_value
-            self._push_to_voice()
+            self._cycle_step(self.state.edit_step)
+            self._paint_value = self.state.steps[self.state.edit_step].active
         else: # Release
             self._paint_mode = False
+
+    def _cycle_step(self, idx):
+        """Cycle a step: off -> on (tied to previous) -> detached -> off."""
+        step = self.state.steps[idx]
+        if not step.active:
+            step.active = True
+            step.tie = (idx > 0 and self.state.steps[idx - 1].active)
+        elif step.tie:
+            step.tie = False   # detach from the previous note
+        else:
+            step.active = False
+            step.tie = False   # off
+        self._push_to_voice()
 
     def _push_to_voice(self):
         if self.state.target_voice_id is None:
@@ -112,7 +135,8 @@ class StepSequencer:
             if step.active:
                 dur = 6
                 i += 1
-                while i < self.state.total_steps and self.state.steps[i].active:
+                while (i < self.state.total_steps and self.state.steps[i].active
+                       and self.state.steps[i].tie):
                     dur += 6
                     i += 1
                 motif.append(MotifStep(total_ticks=dur, gate_ticks=int(dur * 0.85), is_rest=False))

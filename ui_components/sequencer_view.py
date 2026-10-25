@@ -107,14 +107,15 @@ class SequencerView:
         total = state.total_steps
         cy = rect.centery
 
-        # Map each step to the bounds of its active run
+        # Map each step to the bounds of its note (an active run, honoring ties)
         run_start = {}
         run_end = {}
         i = 0
         while i < total:
             if state.steps[i].active:
                 s = i
-                while i < total and state.steps[i].active:
+                i += 1
+                while i < total and state.steps[i].active and state.steps[i].tie:
                     i += 1
                 e = i - 1
                 for j in range(s, e + 1):

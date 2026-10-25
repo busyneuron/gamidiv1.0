@@ -23,14 +23,46 @@ class VoiceManager:
         bus.on("MASTER_TICK", self._on_master_tick)
         bus.on("SONG_POSITION", self._on_song_position)
 
-        self.create_initial_voice(self.theory)
+        self.create_initial_voices(self.theory)
 
-    def create_initial_voice(self, theory):
-        voice = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
-                    degree_offset=0, octave_offset=0, channel=0,
-                    melody_history=self.melody_history)
-        voice.set_motif([("quarter", "staccato"),("eighth", "normal"),("eighth", "normal")])
-        self.add_voice(voice)
+    def create_initial_voices(self, theory):
+        """Create the default 4-voice configuration:
+        - lead: sustain, channel 2
+        - two middle harmonies: ostinato at the 3rd and 5th
+        - upper canon: channel 2, +1 octave, 1-bar delay
+        """
+        # 1. Lead — sustained, channel 2
+        lead = Voice(voice_id=0, event_bus=bus, theory_engine=theory,
+                     degree_offset=0, octave_offset=0, channel=2,
+                     melody_history=self.melody_history)
+        lead.set_mode("sustain")
+        self.add_voice(lead)
+
+        # 2. Middle harmony — ostinato third (degree +2)
+        third = Voice(voice_id=1, event_bus=bus, theory_engine=theory,
+                      degree_offset=2, octave_offset=0, channel=0,
+                      melody_history=self.melody_history)
+        third.set_mode("ostinato")
+        third.set_motif([("eighth", "normal")])
+        self.add_voice(third)
+
+        # 3. Middle harmony — ostinato fifth (degree +4)
+        fifth = Voice(voice_id=2, event_bus=bus, theory_engine=theory,
+                      degree_offset=4, octave_offset=0, channel=0,
+                      melody_history=self.melody_history)
+        fifth.set_mode("ostinato")
+        fifth.set_motif([("eighth", "normal")])
+        self.add_voice(fifth)
+
+        # 4. Upper canon — channel 2, +1 octave, 1 bar delay
+        canon = Voice(voice_id=3, event_bus=bus, theory_engine=theory,
+                      degree_offset=0, octave_offset=0, channel=2,
+                      melody_history=self.melody_history)
+        canon.set_mode("canon")
+        canon.set_canon_delay(96)          # 1 bar at 24 PPQN
+        canon.set_canon_degree_offset(0)
+        canon.set_canon_octave_offset(1)   # 1 octave above
+        self.add_voice(canon)
 
     def add_voice(self, voice):
         self.voices[voice.id] = voice
