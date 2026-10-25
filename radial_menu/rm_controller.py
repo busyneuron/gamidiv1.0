@@ -16,7 +16,7 @@ class RadialMenuController:
         bus.on("FOCUS_CHANGED", self._on_focus_changed)
         self.active_gates = {}
         bus.on("ACTION_STATE_CHANGED", self._on_action_state_changed)
-        bus.on("SHIFT_HELD", self._on_shift)
+        bus.on("RADIAL_MENU_BACK", self._on_back)
 
     def _on_action_state_changed(self, action_id, active):
         if action_id.startswith("toggle_"):
@@ -27,11 +27,6 @@ class RadialMenuController:
 
     def _on_focus_changed(self, mode: str):
         self.set_active(mode == "radial")
-
-    def _on_shift(self, value):
-        # L2 press while the radial menu is focused = go back one level.
-        if value:
-            self._on_back()
 
     def _on_back(self):
         """Pop the top submenu (L2 cancel / go back)."""

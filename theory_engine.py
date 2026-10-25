@@ -10,7 +10,6 @@ class TheoryEngine:
         self.filter_pivot_note = None
         self.extensions = set()               # intervals 6,8,10,12
         self.omissions = set()                # intervals 2,4
-        self.extension_accidentals = {}       # extension interval -> semitone shift (+1 sharp, -1 flat)
 
         self.SCALES = {
             "Major": [0,2,4,5,7,9,11],
@@ -225,16 +224,6 @@ class TheoryEngine:
             bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
                      root_note=self.root_note, mode=self.mode)
 
-    def set_extension_accidentals(self, accidentals):
-        """Set sharp/flat shifts for chord extensions (dict {interval: shift})."""
-        self.extension_accidentals = {k: v for k, v in accidentals.items()
-                                      if v != 0 and k in self.extensions}
-        if self.filter_root:
-            self._update_effective_intervals()
-            self._emit_chord_qualities()
-            bus.emit("SCALE_CHANGED", legal_notes=self.get_legal_notes(),
-                     root_note=self.root_note, mode=self.mode)
-
     # --- Legal notes (unchanged from your version) ---
     def get_legal_notes(self):
         if self.filter_root and self.filter_pivot_note is not None:
@@ -263,19 +252,17 @@ class TheoryEngine:
         if pivot_degree is None:
             return self._get_scale_legal_notes()
 
-        # (degree, semitone_shift) pairs: triad + extensions (with accidentals)
-        chord_degrees = [(pivot_degree, 0), (pivot_degree+2, 0), (pivot_degree+4, 0)]
+        chord_degrees = [pivot_degree, pivot_degree+2, pivot_degree+4]
         for ext in self.extensions:
-            chord_degrees.append((pivot_degree + ext, self.extension_accidentals.get(ext, 0)))
+            chord_degrees.append(pivot_degree + ext)
         # Remove omitted degrees (relative to pivot)
-        chord_degrees = [(d, s) for d, s in chord_degrees
-                         if (d - pivot_degree) not in self.omissions]
+        chord_degrees = [d for d in chord_degrees if (d - pivot_degree) not in self.omissions]
 
         legal = set()
         for octave in range(-1, 10):
-            for d, shift in chord_degrees:
+            for d in chord_degrees:
                 octave_shift, idx = divmod(d, 7)
-                interval = self.effective_intervals[idx] + 12 * octave_shift + shift
+                interval = self.effective_intervals[idx] + 12 * octave_shift
                 note = self.root_note + interval + (octave - 4) * 12
                 if 0 <= note <= 127:
                     legal.add(note)

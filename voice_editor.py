@@ -17,8 +17,12 @@ class VoiceEditor:
             self._emit_selection()
 
     def _emit_selection(self):
-        """Emit event with current selected voice IDs."""
-        bus.emit("VOICE_SELECTION_CHANGED", selected_ids=self._selected_ids.copy())
+        """Emit event with current selected voice IDs and their channels."""
+        selected_channels = {self.vm.voices[vid].channel for vid in self._selected_ids
+                             if vid in self.vm.voices}
+        bus.emit("VOICE_SELECTION_CHANGED",
+                 selected_ids=self._selected_ids.copy(),
+                 selected_channels=selected_channels)
 
     # --- Selection ---
     def select_voice(self, voice_id):

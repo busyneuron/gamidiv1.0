@@ -47,9 +47,25 @@ class BaseCircle(ABC):
         self.stack_accidentals = {}      # working {interval: shift}
         self.extension_hover = None      # hovered extension option index
         self._stack_touched = False      # did the user toggle any extension?
-        self.extension_radius_ratio = 0.33
+        self.extension_radius_ratio = 0.30
+        # Extension ring aesthetic parameters
+        self.extension_bubble_radius = 8
+        self.extension_active_radius = 10
+        self.extension_hover_radius = 11
+        self.extension_none_radius = 8
+        self.extension_active_color = (255, 215, 0)
+        self.extension_idle_color = (210, 210, 215)
+        self.extension_hover_color = (255, 255, 255)
+        self.extension_none_color = (150, 150, 155)
+        self.extension_label_color = (0, 0, 0)
         self._last_stick_x = 0.0
         self._last_stick_y = 0.0
+        # Shift dimming (fade non-pivot bubbles while stacking extensions)
+        self._shift_dim_factor = 0.0
+        self._shift_dim_from = 0.0
+        self._shift_dim_target = 0.0
+        self._shift_dim_start = 0
+        self.shift_dim_duration = 180
 
         # Chord qualities from theory
         self.chord_qualities = self.theory.get_chord_qualities()
@@ -70,7 +86,7 @@ class BaseCircle(ABC):
         self.easing = "ease_out"
 
         # Radii for focused state
-        self.scale_factor = 1.4
+        self.scale_factor = 1.5
         self.radius_tonic = 14 * self.scale_factor
         self.radius_triad = 11 * self.scale_factor
         self.radius_diatonic = 10 * self.scale_factor
@@ -306,6 +322,24 @@ class BaseCircle(ABC):
         else:
             return self.current_radius.get(key, target_radius)
 
+    def _update_shift_dim(self, now):
+        """Ease the shift-dim factor toward 1 (held) or 0 (released)."""
+        target = 1.0 if self.shift_held else 0.0
+        if target == self._shift_dim_factor:
+            return
+        if self._shift_dim_target != target:
+            self._shift_dim_target = target
+            self._shift_dim_from = self._shift_dim_factor
+            self._shift_dim_start = now
+            return
+        elapsed = now - self._shift_dim_start
+        if elapsed >= self.shift_dim_duration:
+            self._shift_dim_factor = target
+        else:
+            t = elapsed / self.shift_dim_duration
+            t = 1 - (1 - t) ** 2  # ease out
+            self._shift_dim_factor = self._shift_dim_from + (target - self._shift_dim_from) * t
+
     def _draw_ring(self, surface, cx, cy, ring_radius, is_focused, is_major):
         now = pygame.time.get_ticks()
         ring_key = "major" if is_major else "minor"
@@ -366,21 +400,34 @@ class BaseCircle(ABC):
                     target_radius = self.radius_hover_minor
                     text_color = self.minor_focused_hover_text
 
+            # Dim non-pivot bubbles via transparency while stacking extensions
+            dim_alpha = 1.0
+            if self.shift_held and self._shift_dim_factor > 0:
+                is_pivot = (self.shift_pivot_index == i and self.active_ring == ring_key)
+                if not is_pivot:
+                    dim_alpha = 1.0 - 0.65 * self._shift_dim_factor
+
             # Label from subclass
             label = self.get_gate_label(i, is_major, info)
 
             animated_radius = self._update_radius_animation(ring_key, i, target_radius, now)
             surf = self._get_circle_surface(color, int(animated_radius))
+            if dim_alpha < 1.0:
+                surf = surf.copy()
+                surf.set_alpha(int(255 * dim_alpha))
             x = cx + math.cos(angle) * ring_radius
             y = cy + math.sin(angle) * ring_radius
             rect = surf.get_rect(center=(int(x), int(y)))
             surface.blit(surf, rect)
 
             text_surf = self.parent.font_status.render(label, True, text_color)
+            if dim_alpha < 1.0:
+                text_surf.set_alpha(int(255 * dim_alpha))
             text_rect = text_surf.get_rect(center=(int(x), int(y)))
             surface.blit(text_surf, text_rect)
 
     def _draw_extension_ring(self, surface, cx, cy, ring_radius):
+        now = pygame.time.get_ticks()
         n = len(self.extension_options)
         current = self.extension_stack if self.shift_held else self.active_extensions
         for i, opt in enumerate(self.extension_options):
@@ -394,23 +441,24 @@ class BaseCircle(ABC):
             is_active = (not is_none) and (key in current)
 
             if is_hovered:
-                color = (255, 255, 255)
-                radius = 9
+                color = self.extension_hover_color
+                target_radius = self.extension_hover_radius
             elif is_active:
-                color = (255, 215, 0)   # gold = stacked / committed
-                radius = 8
+                color = self.extension_active_color
+                target_radius = self.extension_active_radius
             elif is_none:
-                color = (120, 120, 120)
-                radius = 6
+                color = self.extension_none_color
+                target_radius = self.extension_none_radius
             else:
-                color = (85, 85, 95)
-                radius = 6
+                color = self.extension_idle_color
+                target_radius = self.extension_bubble_radius
 
-            surf = self._get_circle_surface(color, radius)
+            animated_radius = self._update_radius_animation("extension", i, target_radius, now)
+            surf = self._get_circle_surface(color, int(animated_radius))
             rect = surf.get_rect(center=(int(x), int(y)))
             surface.blit(surf, rect)
 
-            text_surf = self.parent.font_status.render(self._extension_label(opt), True, (255, 255, 255))
+            text_surf = self.parent.font_status.render(self._extension_label(opt), True, self.extension_label_color)
             text_rect = text_surf.get_rect(center=(int(x), int(y)))
             surface.blit(text_surf, text_rect)
 
@@ -579,6 +627,8 @@ class BaseCircle(ABC):
     # Public draw method
     # ------------------------------------------------------------------
     def draw(self, surface, rect):
+        now = pygame.time.get_ticks()
+        self._update_shift_dim(now)
         cx = rect.centerx
         cy = rect.centery
         max_radius = min(rect.width, rect.height) // 2 - 10
@@ -597,10 +647,14 @@ class BaseCircle(ABC):
             text_rect = text_surf.get_rect(center=(cx + self.center_text_offset_x, cy + self.center_text_offset_y))
             surface.blit(text_surf, text_rect)
 
-        # Extension ring (shown while holding shift to stack extensions)
-        if self.shift_held:
+        # Extension ring (centered on the pivot bubble while holding shift)
+        if self.shift_held and self.shift_pivot_index is not None:
+            pivot_ring_radius = outer_radius if self.active_ring == "major" else inner_radius
+            pivot_angle = math.radians(self.shift_pivot_index * 30 - 90)
+            pivot_x = cx + math.cos(pivot_angle) * pivot_ring_radius
+            pivot_y = cy + math.sin(pivot_angle) * pivot_ring_radius
             extension_radius = max_radius * self.extension_radius_ratio
-            self._draw_extension_ring(surface, cx, cy, extension_radius)
+            self._draw_extension_ring(surface, pivot_x, pivot_y, extension_radius)
 
         # Optional center dot
         # pygame.draw.circle(surface, (120,120,140), (cx, cy), 8, 1)
