@@ -10,7 +10,8 @@ class ActionMapper:
             13: "seq_cursor_right",
             5: "gate",
             7: "chord",
-            6: "radial_menu_back",
+            6: "shift",
+            11: "cycle_extension_accidental",
             4: "toggle_circle_ring",
             8: "toggle_circle_mode",
             

@@ -25,7 +25,13 @@ class ExtensionsDisplay:
         parts = []
         for ext in sorted(theory.extensions):
             if ext in self.extension_names:
-                parts.append(self.extension_names[ext])
+                name = self.extension_names[ext]
+                shift = theory.extension_accidentals.get(ext, 0)
+                if shift > 0:
+                    name = "#" + name
+                elif shift < 0:
+                    name = "b" + name
+                parts.append(name)
         for omit in sorted(theory.omissions):
             if omit in self.omission_names:
                 parts.append(self.omission_names[omit])

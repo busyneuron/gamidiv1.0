@@ -12,6 +12,18 @@ MAJOR_PITCHES = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5]
 MINOR_NAMES = ["a", "e", "b", "f#", "db", "ab", "eb", "bb", "f", "c", "g", "d"]
 MINOR_PITCHES = [(p - 3) % 12 for p in MAJOR_PITCHES]
 
+# Extension / omission options for the selected chord. These match the radial
+# menu's "extensions" submenu, plus a "none" option to clear the stack.
+EXTENSION_OPTIONS = [
+    {"label": "7th", "kind": "ext", "interval": 6},
+    {"label": "9th", "kind": "ext", "interval": 8},
+    {"label": "11th", "kind": "ext", "interval": 10},
+    {"label": "13th", "kind": "ext", "interval": 12},
+    {"label": "no3", "kind": "omit", "interval": 2},
+    {"label": "no5", "kind": "omit", "interval": 4},
+    {"label": "none", "kind": "none", "interval": None},
+]
+
 class BaseCircle(ABC):
     def __init__(self, parent, theory_engine: TheoryEngine):
         self.parent = parent          # GamidiInterface (for fonts, theme)
@@ -24,6 +36,20 @@ class BaseCircle(ABC):
         self.selected_index = None    # index of selected gate (0-11)
         self.selected_roman = None   # store roman numeral for center text
         self.selected_ring = None 
+
+        # Extension stacking (L2 "shift" + hover on the pivot bubble)
+        self.shift_held = False
+        self.shift_pivot_index = None    # bubble whose extensions we're editing
+        self.extension_options = EXTENSION_OPTIONS
+        self.active_extensions = set()   # committed (kind, interval) tuples
+        self.active_accidentals = {}     # committed {interval: shift}
+        self.extension_stack = set()     # working set while shift is held
+        self.stack_accidentals = {}      # working {interval: shift}
+        self.extension_hover = None      # hovered extension option index
+        self._stack_touched = False      # did the user toggle any extension?
+        self.extension_radius_ratio = 0.33
+        self._last_stick_x = 0.0
+        self._last_stick_y = 0.0
 
         # Chord qualities from theory
         self.chord_qualities = self.theory.get_chord_qualities()
@@ -81,6 +107,8 @@ class BaseCircle(ABC):
         bus.on("FOCUS_CHANGED", self._on_focus_changed)
         bus.on("CHORD_QUALITIES_CHANGED", self._on_chord_qualities_changed)
         bus.on("TOGGLE_CIRCLE_RING", self._on_toggle_ring)
+        bus.on("SHIFT_HELD", self._on_shift)
+        bus.on("CYCLE_EXTENSION_ACCIDENTAL", self._on_cycle_accidental)
 
     def _on_toggle_ring(self):
         """Handle TOGGLE_CIRCLE_RING event. Only toggle if this circle is active."""
@@ -352,21 +380,174 @@ class BaseCircle(ABC):
             text_rect = text_surf.get_rect(center=(int(x), int(y)))
             surface.blit(text_surf, text_rect)
 
-    # ------------------------------------------------------------------
-    # Input handling
-    # ------------------------------------------------------------------
+    def _draw_extension_ring(self, surface, cx, cy, ring_radius):
+        n = len(self.extension_options)
+        current = self.extension_stack if self.shift_held else self.active_extensions
+        for i, opt in enumerate(self.extension_options):
+            angle = math.radians(i * (360.0 / n) - 90)
+            x = cx + math.cos(angle) * ring_radius
+            y = cy + math.sin(angle) * ring_radius
+
+            key = (opt["kind"], opt["interval"])
+            is_none = (opt["kind"] == "none")
+            is_hovered = (self.shift_held and self.extension_hover == i)
+            is_active = (not is_none) and (key in current)
+
+            if is_hovered:
+                color = (255, 255, 255)
+                radius = 9
+            elif is_active:
+                color = (255, 215, 0)   # gold = stacked / committed
+                radius = 8
+            elif is_none:
+                color = (120, 120, 120)
+                radius = 6
+            else:
+                color = (85, 85, 95)
+                radius = 6
+
+            surf = self._get_circle_surface(color, radius)
+            rect = surf.get_rect(center=(int(x), int(y)))
+            surface.blit(surf, rect)
+
+            text_surf = self.parent.font_status.render(self._extension_label(opt), True, (255, 255, 255))
+            text_rect = text_surf.get_rect(center=(int(x), int(y)))
+            surface.blit(text_surf, text_rect)
+
     def _on_focus_changed(self, mode: str):
         self.focus_active = (mode == "circle")
+        if not self.focus_active:
+            # Discard any uncommitted extension stack when focus leaves.
+            self.shift_held = False
 
-    def _on_stick_updated(self, x: float, y: float):
+    # ------------------------------------------------------------------
+    # Extension stacking (L2 shift + hover)
+    # ------------------------------------------------------------------
+    def _on_shift(self, value):
         if not (self.focus_active and self.mode_active):
             return
+        self.shift_held = value
+        if value:
+            # Lock the hovered (or selected) bubble as this session's pivot.
+            if self.hovered_index is not None:
+                self.shift_pivot_index = self.hovered_index
+            elif self.selected_index is not None:
+                self.shift_pivot_index = self.selected_index
+            else:
+                self.shift_held = False
+                return
+            self.extension_stack = set()   # fresh selection
+            self.stack_accidentals = {}    # fresh accidentals
+            # Pre-seed hover so shift doesn't immediately toggle the extension
+            # that happens to sit under the stick.
+            self.extension_hover = self._extension_index_from_axes(self._last_stick_x, self._last_stick_y)
+            self._stack_touched = False
+            self.exit_timer = 0
+        else:
+            self._commit_extension_stack()
+
+    def _commit_extension_stack(self):
+        # Commit the pivot chord and (if the user stacked anything) its extensions.
+        pivot = self.shift_pivot_index
+        if pivot is not None:
+            self.on_select(pivot)
+        if self._stack_touched:
+            ext = {interval for kind, interval in self.extension_stack if kind == "ext"}
+            omit = {interval for kind, interval in self.extension_stack if kind == "omit"}
+            self.theory.set_extensions(ext)
+            self.theory.set_omissions(omit)
+            self.theory.set_extension_accidentals(self.stack_accidentals)
+            self.active_extensions = set(self.extension_stack)
+            self.active_accidentals = dict(self.stack_accidentals)
+        self.extension_hover = None
+        self.shift_pivot_index = None
+        self.hovered_index = None
+        labels = [self._extension_label(opt) for opt in self.extension_options
+                  if opt["kind"] != "none" and (opt["kind"], opt["interval"]) in self.active_extensions]
+        bus.emit("ADD_LOG", text="Chord extensions: " + (", ".join(labels) if labels else "none"),
+                 color=(100, 200, 200))
+
+    def _extension_label(self, opt):
+        label = opt["label"]
+        if opt["kind"] == "ext":
+            shift = (self.stack_accidentals.get(opt["interval"], 0) if self.shift_held
+                     else self.active_accidentals.get(opt["interval"], 0))
+            if shift > 0:
+                label = "#" + label
+            elif shift < 0:
+                label = "b" + label
+        return label
+
+    def _toggle_extension(self, idx):
+        self._stack_touched = True
+        opt = self.extension_options[idx]
+        if opt["kind"] == "none":
+            self.extension_stack.clear()
+            self.stack_accidentals.clear()
+            return
+        key = (opt["kind"], opt["interval"])
+        if key in self.extension_stack:
+            self.extension_stack.discard(key)
+            if opt["kind"] == "ext":
+                self.stack_accidentals.pop(opt["interval"], None)
+        else:
+            self.extension_stack.add(key)
+            if opt["kind"] == "ext":
+                self.stack_accidentals.setdefault(opt["interval"], 0)
+
+    def _cycle_accidental(self, idx):
+        self._stack_touched = True
+        opt = self.extension_options[idx]
+        if opt["kind"] != "ext":
+            return
+        key = (opt["kind"], opt["interval"])
+        if key not in self.extension_stack:
+            return  # only cycle accidentals for stacked extensions
+        cur = self.stack_accidentals.get(opt["interval"], 0)
+        # Cycle natural (0) -> sharp (+1) -> flat (-1) -> natural (0)
+        self.stack_accidentals[opt["interval"]] = {0: 1, 1: -1, -1: 0}[cur]
+
+    def _on_cycle_accidental(self):
+        if not (self.shift_held and self.focus_active and self.mode_active):
+            return
+        if self.extension_hover is None:
+            return
+        self._cycle_accidental(self.extension_hover)
+
+    def _extension_index_from_axes(self, x, y):
+        if math.hypot(x, y) < 0.01:
+            return None
+        angle = math.degrees(math.atan2(y, x))
+        angle = (angle + 360) % 360
+        angle = (angle - 90) % 360  # 0 = up, clockwise
+        n = len(self.extension_options)
+        return int((angle + 180.0 / n) // (360.0 / n)) % n
+
+    def _update_extension_hover(self, x, y):
+        idx = self._extension_index_from_axes(x, y)
+        if idx is None:
+            self.extension_hover = None
+            return
+        if idx != self.extension_hover:
+            self.extension_hover = idx
+            self._toggle_extension(idx)
+
+    def _on_stick_updated(self, x: float, y: float):
         # Optional inversion
         x = -x
         y = -y
+        self._last_stick_x = x
+        self._last_stick_y = y
+        if not (self.focus_active and self.mode_active):
+            return
         dist = math.hypot(x, y)
         DEADZONE = 0.01
         EXIT_GRACE_FRAMES = 10
+
+        # While holding shift, the stick stacks extensions on the pivot bubble.
+        if self.shift_held:
+            self._update_extension_hover(x, y)
+            return
 
         if dist < DEADZONE:
             self.exit_timer += 1
@@ -415,6 +596,11 @@ class BaseCircle(ABC):
                 text_surf.set_alpha(self.center_text_color[3])
             text_rect = text_surf.get_rect(center=(cx + self.center_text_offset_x, cy + self.center_text_offset_y))
             surface.blit(text_surf, text_rect)
+
+        # Extension ring (shown while holding shift to stack extensions)
+        if self.shift_held:
+            extension_radius = max_radius * self.extension_radius_ratio
+            self._draw_extension_ring(surface, cx, cy, extension_radius)
 
         # Optional center dot
         # pygame.draw.circle(surface, (120,120,140), (cx, cy), 8, 1)
